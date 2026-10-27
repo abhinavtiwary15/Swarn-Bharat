@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Mypy / Ruff / Pytest caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# uv
+# uv.lock IS committed (reproducible builds)
+.uv/
+reqs.txt
+
+# Agent artifacts & scratch
+*.plan.md
+*.log
+scratch/
+ci-sim/
+.system_generated/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
