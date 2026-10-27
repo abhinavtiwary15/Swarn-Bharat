@@ -1,5 +1,27 @@
 #!/bin/sh
 set -e
 
+z40="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+    if [ "$ALLOW_PROTECTED_PUSH" != "1" ]; then
+        case "$remote_ref" in
+            refs/heads/main|refs/heads/master)
+                echo "ERROR: Direct pushes to '$remote_ref' are rejected." >&2
+                echo "Create a feature branch and open a pull request, or set ALLOW_PROTECTED_PUSH=1." >&2
+                exit 1
+                ;;
+        esac
+
+        if [ "$local_oid" != "$z40" ] && [ "$remote_oid" != "$z40" ]; then
+            if ! git merge-base --is-ancestor "$remote_oid" "$local_oid" 2>/dev/null; then
+                echo "ERROR: Non-fast-forward push to '$remote_ref' rejected." >&2
+                echo "Pull latest changes or set ALLOW_PROTECTED_PUSH=1." >&2
+                exit 1
+            fi
+        fi
+    fi
+done
+
 echo "Running pre-push verification gates..."
-uv run python scripts/verify.py
+python scripts/verify.py

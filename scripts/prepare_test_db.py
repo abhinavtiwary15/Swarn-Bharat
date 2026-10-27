@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -26,10 +27,10 @@ async def _create_database_and_extension(test_url: str) -> None:
     parts = urlsplit(clean_url)
     db_name = parts.path.lstrip("/")
 
-    if not db_name.endswith("_test"):
+    if not re.match(r"^[a-z0-9_]+$", db_name) or not db_name.endswith("_test"):
         print(
             f"ERROR: Refusing to prepare database {db_name!r}. "
-            "Test database name must strictly end in '_test'.",
+            "Test database name must match '^[a-z0-9_]+$' and end in '_test'.",
             file=sys.stderr,
         )
         sys.exit(1)

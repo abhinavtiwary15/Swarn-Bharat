@@ -32,9 +32,9 @@ ALLOWED_PREFIXES = (
 )
 
 
-def _run_step(name: str, cmd: list[str]) -> None:
+def _run_step(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> None:
     print(f"==> [verify] {name}...")
-    res = subprocess.run(cmd, cwd=REPO_ROOT)
+    res = subprocess.run(cmd, cwd=cwd)
     if res.returncode != 0:
         print(f"FAILED: {name} exited with code {res.returncode}", file=sys.stderr)
         sys.exit(res.returncode)
@@ -80,6 +80,7 @@ def main() -> None:
         ],
     )
     _run_step("OpenAPI sync", [py, "scripts/export_openapi.py", "--check"])
+    _run_step("Alembic check", [py, "-m", "alembic", "check"], cwd=REPO_ROOT / "backend")
     _check_tracked_files()
     _run_step("Pytest", [py, "-m", "pytest", "backend/tests", "-v"])
 

@@ -76,6 +76,10 @@ jobs:
         working-directory: backend
         run: uv run alembic upgrade head
 
+      - name: Alembic check
+        working-directory: backend
+        run: uv run alembic check
+
       - name: Pytest
         run: uv run pytest backend/tests -v --tb=short
 
