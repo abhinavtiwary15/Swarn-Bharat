@@ -35,14 +35,6 @@ class ErrorDetail(BaseModel):
     field: str | None = None
 
 
-class ApiResponse(BaseModel, Generic[T]):
-    """Standard response envelope returned by API endpoints."""
-
-    success: bool
-    data: T | None = None
-    error: ErrorDetail | None = None
-
-
 class ErrorResponse(BaseModel):
     """Concrete non-2xx response envelope."""
 
@@ -51,22 +43,20 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
-class MessageResponse(BaseModel):
-    """Single-string status response."""
+class SuccessEnvelope(BaseModel, Generic[T]):
+    """Standard success response envelope."""
 
-    message: str
+    success: Literal[True] = True
+    data: T
+    error: None = None
 
 
 class HealthStatus(BaseModel):
     """Health check dependency status."""
 
-    status: str
+    status: Literal["ok"] = "ok"
     version: str
-    db_ok: bool
-    redis_ok: bool
 
 
-class HealthEnvelope(ApiResponse[HealthStatus]):
-    """Typed envelope for health check endpoints."""
-
-    data: HealthStatus | None = None
+class HealthEnvelope(SuccessEnvelope[HealthStatus]):
+    """Typed envelope for health check responses."""

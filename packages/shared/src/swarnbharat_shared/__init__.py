@@ -10,17 +10,15 @@ from swarnbharat_shared.auth import (
     UserPublic,
 )
 from swarnbharat_shared.common import (
-    ApiResponse,
     ErrorCode,
     ErrorDetail,
     ErrorResponse,
     HealthEnvelope,
     HealthStatus,
-    MessageResponse,
+    SuccessEnvelope,
 )
 
 __all__ = [
-    "ApiResponse",
     "ErrorCode",
     "ErrorDetail",
     "ErrorResponse",
@@ -29,9 +27,9 @@ __all__ = [
     "HealthStatus",
     "LoginRequest",
     "LogoutRequest",
-    "MessageResponse",
     "RefreshRequest",
     "RegisterRequest",
+    "SuccessEnvelope",
     "TokenPair",
     "UserPublic",
 ]
