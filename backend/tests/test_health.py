@@ -16,8 +16,6 @@ async def test_health_live_returns_200(client: AsyncClient) -> None:
     data = body["data"]
     assert data["status"] == "ok"
     assert "version" in data
-    assert data["db_ok"] is True
-    assert data["redis_ok"] is True
 
 
 @pytest.mark.asyncio
@@ -29,8 +27,7 @@ async def test_health_ready_returns_200(client: AsyncClient) -> None:
     assert body["error"] is None
     data = body["data"]
     assert data["status"] == "ok"
-    assert data["db_ok"] is True
-    assert data["redis_ok"] is True
+    assert "version" in data
 
 
 @pytest.mark.asyncio
@@ -47,9 +44,9 @@ async def test_health_ready_returns_503_when_db_down(
     assert r.status_code == 503
     body = r.json()
     assert body["success"] is False
+    assert body["data"] is None
     assert body["error"]["code"] == "SERVICE_UNAVAILABLE"
-    assert body["data"]["db_ok"] is False
-    assert body["data"]["status"] == "degraded"
+    assert "database" in body["error"]["message"]
 
 
 @pytest.mark.asyncio
@@ -67,6 +64,6 @@ async def test_health_ready_returns_503_when_redis_down(
     assert r.status_code == 503
     body = r.json()
     assert body["success"] is False
+    assert body["data"] is None
     assert body["error"]["code"] == "SERVICE_UNAVAILABLE"
-    assert body["data"]["redis_ok"] is False
-    assert body["data"]["status"] == "degraded"
+    assert "redis" in body["error"]["message"]

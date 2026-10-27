@@ -60,7 +60,6 @@ async def _started_fail() -> StreamingResponse:
 
 app.include_router(_test_router)
 
-
 _DEV_REDIS_DBS = {2, 3, 4}
 
 
@@ -92,7 +91,7 @@ def _guard_test_environment() -> None:
 
 @pytest_asyncio.fixture(scope="session")
 async def managed_app() -> AsyncIterator[FastAPI]:
-    """Run FastAPI lifecycle once for the test session."""
+    """Run FastAPI lifecycle once for integration tests."""
     try:
         async with engine.connect() as conn:
             await conn.execute(sa.text("SELECT 1"))
@@ -109,28 +108,32 @@ async def managed_app() -> AsyncIterator[FastAPI]:
 
 
 @pytest_asyncio.fixture
-async def client(managed_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
-    """Provide a test HTTP client bound to the application."""
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=managed_app),
-        base_url="http://localhost",
-    ) as c:
-        yield c
-
-
-@pytest_asyncio.fixture(autouse=True)
 async def clean_tables() -> AsyncIterator[None]:
-    """Truncate tables after each test run."""
+    """Truncate tables between integration test runs."""
     yield
     async with engine.begin() as conn:
         await conn.execute(sa.text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture
 async def flush_redis() -> AsyncIterator[None]:
-    """Flush test Redis databases after each test run."""
+    """Flush test Redis databases between integration test runs."""
     from backend.core.redis import redis_rl, redis_throttle, redis_tokens
 
     for r in (redis_tokens, redis_rl, redis_throttle):
         await r.flushdb()
     yield
+
+
+@pytest_asyncio.fixture
+async def client(
+    managed_app: FastAPI,
+    clean_tables: None,
+    flush_redis: None,
+) -> AsyncIterator[httpx.AsyncClient]:
+    """Provide a test HTTP client bound to the application for integration tests."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=managed_app),
+        base_url="http://localhost",
+    ) as c:
+        yield c

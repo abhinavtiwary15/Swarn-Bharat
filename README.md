@@ -65,7 +65,7 @@ uv run python scripts/export_openapi.py --check
 ## Health Probes
 
 - `GET /api/v1/health/live`: Liveness probe returning HTTP 200 as long as the process is running.
-- `GET /api/v1/health/ready`: Readiness probe checking PostgreSQL and Redis connectivity. Returns HTTP 200 when all dependencies are reachable, or HTTP 503 (`SERVICE_UNAVAILABLE`) if any dependency is degraded.
+- `GET /api/v1/health/ready`: Readiness probe checking PostgreSQL and Redis connectivity. Returns HTTP 200 when all dependencies are reachable, or HTTP 503 (`SERVICE_UNAVAILABLE`) with an ErrorResponse naming unavailable dependencies if degraded.
 
 ## API Documentation
 
