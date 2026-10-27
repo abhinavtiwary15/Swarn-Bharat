@@ -2,6 +2,40 @@
 
 FastAPI backend, PostgreSQL with pgvector, Redis, Celery worker, and plain HTML test console.
 
+## Requirements
+
+- **Python 3.12** (system installation or managed)
+- **uv** (fast Python package and project manager)
+- **Docker & Docker Compose** (PostgreSQL 16 with pgvector, Redis 7)
+
+## Repository Layout
+
+```text
+Swarn_Bharat/
+├── backend/
+│   ├── alembic/              # Database migration scripts and env
+│   ├── src/backend/          # Application source code (FastAPI, core, models, api, worker)
+│   ├── tests/                # Automated test suite (pytest)
+│   └── pyproject.toml        # Backend package definition
+├── packages/
+│   └── shared/               # Shared library (swarnbharat_shared: schemas, common enums)
+├── docker/
+│   ├── postgres/             # PostgreSQL initialization scripts
+│   └── docker-compose.yml    # Local development services (Postgres, Redis)
+├── docs/
+│   └── adr/                  # Architecture Decision Records (ADRs)
+├── scripts/                  # Operational and verification scripts (verify, prepare_test_db, etc.)
+├── test-console/             # Frontend test console (vanilla HTML/JS)
+├── openapi.json              # Versioned authoritative OpenAPI specification
+└── pyproject.toml            # Root workspace configuration and shared tooling
+```
+
+## Architecture Decision Records (ADRs)
+
+Key architectural decisions are documented under [`docs/adr/`](docs/adr):
+- [ADR 0001: Error Envelope](docs/adr/0001-error-envelope.md) - Standardized JSON envelopes for success and error responses.
+- [ADR 0002: Rate Limiter](docs/adr/0002-rate-limiter.md) - Fail-closed token bucket rate limiting with Redis fallback.
+
 ## Quick Start
 
 ```bash
@@ -18,7 +52,7 @@ uv sync --all-packages
 cd backend && uv run alembic upgrade head && cd ..
 
 # 5. Start the API server
-uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ## Git Hooks
@@ -84,7 +118,7 @@ Open `test-console/index.html` directly in any web browser. It interacts with th
 Start Uvicorn behind a trusted reverse proxy:
 
 ```bash
-uvicorn backend.main:app \
+uv run uvicorn backend.main:app \
   --host 0.0.0.0 \
   --port 8000 \
   --proxy-headers \
@@ -96,5 +130,5 @@ Do not set `--forwarded-allow-ips=*` in production, as that permits clients to s
 ## Celery Worker
 
 ```bash
-celery -A backend.worker.celery_app.celery_app worker --loglevel=info --concurrency=4
+uv run celery -A backend.worker.celery_app.celery_app worker --loglevel=info --concurrency=4
 ```
