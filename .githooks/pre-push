@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+echo "Running pre-push verification gates..."
+uv run python scripts/verify.py
