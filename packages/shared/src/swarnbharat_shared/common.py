@@ -24,13 +24,15 @@ class ErrorCode(StrEnum):
     INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
     RATE_LIMITER_UNAVAILABLE = "RATE_LIMITER_UNAVAILABLE"
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"  # noqa: S105
+    TOKEN_INVALID = "TOKEN_INVALID"  # noqa: S105
     HTTP_ERROR = "HTTP_ERROR"
 
 
 class ErrorDetail(BaseModel):
     """Machine-readable error detail included in error envelopes."""
 
-    code: str
+    code: ErrorCode
     message: str
     field: str | None = None
 

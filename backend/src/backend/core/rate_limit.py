@@ -9,10 +9,11 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import redis.exceptions
-from fastapi import HTTPException, Request
-from swarnbharat_shared.common import ErrorCode
+from fastapi import Request
 
+from backend.core.errors import ApiError
 from backend.core.redis import redis_rl
+from swarnbharat_shared.common import ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +41,10 @@ def fixed_window(
                 results: list[Any] = await pipe.execute()
         except redis.exceptions.RedisError as exc:
             logger.error("Rate limiter Redis failure: %s", exc)
-            raise HTTPException(
+            raise ApiError(
                 status_code=503,
-                detail={
-                    "code": ErrorCode.RATE_LIMITER_UNAVAILABLE,
-                    "message": "Rate limiter is temporarily unavailable.",
-                },
+                code=ErrorCode.RATE_LIMITER_UNAVAILABLE,
+                message="Rate limiter is temporarily unavailable.",
                 headers={"Retry-After": RETRY_AFTER_UNAVAILABLE},
             ) from exc
 
@@ -53,12 +52,10 @@ def fixed_window(
         if count > times:
             window_end = (window + 1) * seconds
             retry_after = max(math.ceil(window_end - time.time()), 1)
-            raise HTTPException(
+            raise ApiError(
                 status_code=429,
-                detail={
-                    "code": ErrorCode.RATE_LIMIT_EXCEEDED,
-                    "message": "Too many requests.",
-                },
+                code=ErrorCode.RATE_LIMIT_EXCEEDED,
+                message="Too many requests.",
                 headers={"Retry-After": str(retry_after)},
             )
 

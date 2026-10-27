@@ -62,6 +62,7 @@ async def test_rate_limit_redis_down_returns_503(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import redis.exceptions
+
     from backend.core.redis import redis_rl
 
     def _failing_pipeline(*args: object, **kwargs: object) -> None:

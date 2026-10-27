@@ -41,6 +41,20 @@ async def test_422_uses_envelope(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_api_error_uses_envelope(client: AsyncClient) -> None:
+    r = await client.get("/_test/api-error")
+    assert r.status_code == 400
+    assert r.headers.get("x-test-header") == "value"
+    body = r.json()
+    assert body["success"] is False
+    assert body["data"] is None
+    error = body["error"]
+    assert error["code"] == "BAD_REQUEST"
+    assert error["message"] == "Explicit API error"
+    assert error["field"] == "test_field"
+
+
+@pytest.mark.asyncio
 async def test_500_uses_envelope(client: AsyncClient) -> None:
     r = await client.get("/_test/boom")
     assert r.status_code == 500
