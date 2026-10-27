@@ -33,6 +33,10 @@ def _parse_str_list(v: Any) -> list[str]:
 StrList = Annotated[list[str], NoDecode, BeforeValidator(_parse_str_list)]
 
 
+def _redis_url(base: str, db: int) -> str:
+    return f"{base.rstrip('/')}/{db}"
+
+
 class Settings(BaseSettings):
     """Central configuration for backend services."""
 
@@ -52,7 +56,7 @@ class Settings(BaseSettings):
     API_DESCRIPTION: str = (
         "REST API for the Swarn Bharat platform.\n\n"
         "### Architecture & Contracts\n"
-        "- All responses adhere to standard envelopes: `ApiResponse[T]` on success "
+        "- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success "
         "and `ErrorResponse` on failure.\n"
         "- Authentication uses Bearer JWT tokens. Access tokens expire in 15 minutes; "
         "refresh tokens expire in 7 days with single-use rotation.\n"
@@ -85,11 +89,11 @@ class Settings(BaseSettings):
 
     @property
     def celery_broker_url(self) -> str:
-        return f"{self.REDIS_BASE_URL}/{self.REDIS_DB_CELERY_BROKER}"
+        return _redis_url(self.REDIS_BASE_URL, self.REDIS_DB_CELERY_BROKER)
 
     @property
     def celery_result_backend(self) -> str:
-        return f"{self.REDIS_BASE_URL}/{self.REDIS_DB_CELERY_RESULT}"
+        return _redis_url(self.REDIS_BASE_URL, self.REDIS_DB_CELERY_RESULT)
 
     JWT_SECRET_KEY: str
     JWT_REFRESH_SECRET_KEY: str
@@ -107,7 +111,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_production(self) -> Settings:
-        if self.APP_ENV != "production":
+        if self.APP_ENV in ("development", "test"):
             return self
 
         errors: list[str] = []
