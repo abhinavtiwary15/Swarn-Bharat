@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import logging
 
-import redis.exceptions
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from swarnbharat_shared.common import ErrorCode, ErrorDetail, HealthEnvelope, HealthStatus
+from swarnbharat_shared.common import (
+    ErrorCode,
+    ErrorDetail,
+    ErrorResponse,
+    HealthEnvelope,
+    HealthStatus,
+)
 
 from backend.core.config import settings
 from backend.core.database import get_db
@@ -22,75 +29,63 @@ router = APIRouter()
 
 async def _check_dependencies(
     db: AsyncSession,
-) -> HealthStatus:
-    db_ok = True
-    redis_ok = True
+) -> tuple[bool, list[str]]:
+    unavailable: list[str] = []
 
     try:
         await db.execute(text("SELECT 1"))
-    except (SQLAlchemyError, OSError) as exc:
-        logger.warning("Database health check probe failed: %s", exc)
-        db_ok = False
+    except (SQLAlchemyError, OSError, RedisError) as exc:
+        logger.warning("Database probe failed: %s", type(exc).__name__)
+        unavailable.append("database")
 
     try:
         await redis_rl.ping()
-    except (redis.exceptions.RedisError, OSError) as exc:
-        logger.warning("Redis health check probe failed: %s", exc)
-        redis_ok = False
+    except (SQLAlchemyError, OSError, RedisError) as exc:
+        logger.warning("Redis probe failed: %s", type(exc).__name__)
+        unavailable.append("redis")
 
-    return HealthStatus(
-        status="ok" if (db_ok and redis_ok) else "degraded",
-        version=settings.API_VERSION,
-        db_ok=db_ok,
-        redis_ok=redis_ok,
-    )
+    return len(unavailable) == 0, unavailable
 
 
 @router.get(
     "/live",
     response_model=HealthEnvelope,
     summary="Liveness probe",
-    operation_id="health-live",
 )
 async def live() -> HealthEnvelope:
     """Returns 200 OK as long as the application process is running."""
     return HealthEnvelope(
-        success=True,
-        data=HealthStatus(
-            status="ok",
-            version=settings.API_VERSION,
-            db_ok=True,
-            redis_ok=True,
-        ),
+        data=HealthStatus(version=settings.API_VERSION),
     )
 
 
 @router.get(
     "/ready",
     response_model=HealthEnvelope,
-    summary="Readiness probe",
-    operation_id="health-ready",
     responses={
         status.HTTP_503_SERVICE_UNAVAILABLE: {
-            "model": HealthEnvelope,
+            "model": ErrorResponse,
             "description": "Dependencies degraded or unreachable",
         }
     },
+    summary="Readiness probe",
 )
 async def ready(
-    response: Response,
     db: AsyncSession = Depends(get_db),
-) -> HealthEnvelope:
+) -> HealthEnvelope | JSONResponse:
     """Readiness probe returning 503 when downstream dependencies are degraded."""
-    data = await _check_dependencies(db)
-    if data.status != "ok":
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return HealthEnvelope(
-            success=False,
-            data=data,
-            error=ErrorDetail(
-                code=ErrorCode.SERVICE_UNAVAILABLE,
-                message="Dependencies degraded or unreachable.",
-            ),
+    ok, unavailable = await _check_dependencies(db)
+    if not ok:
+        deps_str = ", ".join(unavailable)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.SERVICE_UNAVAILABLE,
+                    message=f"Unavailable dependencies: {deps_str}",
+                ),
+            ).model_dump(mode="json"),
         )
-    return HealthEnvelope(success=True, data=data)
+    return HealthEnvelope(
+        data=HealthStatus(version=settings.API_VERSION),
+    )

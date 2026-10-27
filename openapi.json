@@ -55,35 +55,24 @@
         "type": "object"
       },
       "HealthEnvelope": {
-        "description": "Typed envelope for health check endpoints.",
+        "description": "Typed envelope for health check responses.",
         "properties": {
           "data": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/HealthStatus"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/HealthStatus"
           },
           "error": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ErrorDetail"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "title": "Error",
+            "type": "null"
           },
           "success": {
+            "const": true,
+            "default": true,
             "title": "Success",
             "type": "boolean"
           }
         },
         "required": [
-          "success"
+          "data"
         ],
         "title": "HealthEnvelope",
         "type": "object"
@@ -91,15 +80,9 @@
       "HealthStatus": {
         "description": "Health check dependency status.",
         "properties": {
-          "db_ok": {
-            "title": "Db Ok",
-            "type": "boolean"
-          },
-          "redis_ok": {
-            "title": "Redis Ok",
-            "type": "boolean"
-          },
           "status": {
+            "const": "ok",
+            "default": "ok",
             "title": "Status",
             "type": "string"
           },
@@ -109,10 +92,7 @@
           }
         },
         "required": [
-          "status",
-          "version",
-          "db_ok",
-          "redis_ok"
+          "version"
         ],
         "title": "HealthStatus",
         "type": "object"
@@ -120,7 +100,7 @@
     }
   },
   "info": {
-    "description": "REST API for the Swarn Bharat platform.\n\n### Architecture & Contracts\n- All responses adhere to standard envelopes: `ApiResponse[T]` on success and `ErrorResponse` on failure.\n- Authentication uses Bearer JWT tokens. Access tokens expire in 15 minutes; refresh tokens expire in 7 days with single-use rotation.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
+    "description": "REST API for the Swarn Bharat platform.\n\n### Architecture & Contracts\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Authentication uses Bearer JWT tokens. Access tokens expire in 15 minutes; refresh tokens expire in 7 days with single-use rotation.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
     "title": "Swarn Bharat API",
     "version": "1.0.0"
   },
@@ -177,7 +157,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthEnvelope"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },

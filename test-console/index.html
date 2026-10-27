@@ -33,13 +33,11 @@
   <details open>
     <summary>Health</summary>
 
-    <button onclick="req('GET','/api/v1/health','health-resp')">GET /health</button>
+    <button onclick="req('GET','/api/v1/health/live','health-resp')">GET /health/live</button>
     <button onclick="req('GET','/api/v1/health/ready','ready-resp')">GET /health/ready</button>
     <pre id="health-resp">—</pre>
     <pre id="ready-resp">—</pre>
   </details>
-
-  <!-- Auth sections added in Stage B -->
 
   <script src="app.js"></script>
 </body>
