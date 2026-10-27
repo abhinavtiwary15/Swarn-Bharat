@@ -13,7 +13,7 @@ members = ["backend", "packages/shared"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16",
+    "ruff>=0.17.2",
     "mypy>=1.11",
     "pytest>=8.3",
     "pytest-asyncio>=0.26",
