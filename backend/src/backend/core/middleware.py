@@ -7,9 +7,9 @@ import logging
 from starlette.datastructures import MutableHeaders
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
 
 from backend.core.config import settings
+from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
 
 logger = logging.getLogger(__name__)
 

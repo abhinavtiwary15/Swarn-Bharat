@@ -9,13 +9,16 @@ import pytest
 import pytest_asyncio
 import sqlalchemy as sa
 from asgi_lifespan import LifespanManager
-from backend.core.config import settings
-from backend.core.database import engine
-from backend.core.rate_limit import fixed_window
-from backend.main import app
 from fastapi import APIRouter, Depends, FastAPI
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
+
+from backend.core.config import settings
+from backend.core.database import engine
+from backend.core.errors import ApiError
+from backend.core.rate_limit import fixed_window
+from backend.main import create_app
+from swarnbharat_shared.common import ErrorCode
 
 
 class _RequiredBody(BaseModel):
@@ -33,6 +36,17 @@ async def _validate_body(_body: _RequiredBody) -> dict[str, bool]:
 @_test_router.get("/boom")
 async def _trigger_500() -> None:
     raise RuntimeError("forced 500 for testing")
+
+
+@_test_router.get("/api-error")
+async def _trigger_api_error() -> None:
+    raise ApiError(
+        status_code=400,
+        code=ErrorCode.BAD_REQUEST,
+        message="Explicit API error",
+        field="test_field",
+        headers={"X-Test-Header": "value"},
+    )
 
 
 @_test_router.get("/other")
@@ -58,7 +72,12 @@ async def _started_fail() -> StreamingResponse:
     return StreamingResponse(_failing_stream())
 
 
-app.include_router(_test_router)
+def create_test_app() -> FastAPI:
+    """Build a dedicated FastAPI instance with test routes mounted."""
+    test_app = create_app()
+    test_app.include_router(_test_router)
+    return test_app
+
 
 _DEV_REDIS_DBS = {2, 3, 4}
 
@@ -103,8 +122,9 @@ async def managed_app() -> AsyncIterator[FastAPI]:
             f"Error details: {type(exc).__name__}: {exc}"
         )
 
-    async with LifespanManager(app):
-        yield app
+    test_app = create_test_app()
+    async with LifespanManager(test_app):
+        yield test_app
 
 
 @pytest_asyncio.fixture

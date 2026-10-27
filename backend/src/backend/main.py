@@ -16,12 +16,14 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
-from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
 
 from backend.api.v1.router import v1_router
 from backend.core.config import settings
+from backend.core.database import engine
+from backend.core.errors import ApiError, api_error_handler
 from backend.core.middleware import AppSafetyMiddleware, internal_error_response
 from backend.core.redis import close_all
+from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown lifecycle."""
     yield
     await close_all()
+    await engine.dispose()
 
 
 def _make_operation_id(route: APIRoute) -> str:
@@ -40,38 +43,7 @@ def _make_operation_id(route: APIRoute) -> str:
     return f"{tag}-{name}"
 
 
-app = FastAPI(
-    title=settings.API_TITLE,
-    version=settings.API_VERSION,
-    description=settings.API_DESCRIPTION,
-    openapi_url=settings.OPENAPI_URL,
-    docs_url=settings.API_DOCS_URL,
-    redoc_url=settings.API_REDOC_URL,
-    lifespan=lifespan,
-    generate_unique_id_function=_make_operation_id,
-)
-
-app.add_middleware(AppSafetyMiddleware)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["Retry-After"],
-)
-
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS,
-)
-
-if settings.ENFORCE_HTTPS:
-    app.add_middleware(HTTPSRedirectMiddleware)
-
-
-_STATUS_CODES: dict[int, str] = {
+_STATUS_CODES: dict[int, ErrorCode] = {
     400: ErrorCode.BAD_REQUEST,
     401: ErrorCode.UNAUTHORIZED,
     403: ErrorCode.FORBIDDEN,
@@ -95,19 +67,16 @@ def _build_http_response(exc: StarletteHTTPException) -> JSONResponse:
     )
 
 
-@app.exception_handler(StarletteHTTPException)
 async def starlette_http_exc_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Handle Starlette HTTP routing exceptions."""
     return _build_http_response(exc)
 
 
-@app.exception_handler(FastAPIHTTPException)
 async def fastapi_http_exc_handler(request: Request, exc: FastAPIHTTPException) -> JSONResponse:
     """Handle application HTTP exceptions."""
     return _build_http_response(exc)
 
 
-@app.exception_handler(RequestValidationError)
 async def validation_exc_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle request schema validation errors."""
     errors = exc.errors()
@@ -125,7 +94,6 @@ async def validation_exc_handler(request: Request, exc: RequestValidationError) 
     )
 
 
-@app.exception_handler(Exception)
 async def catch_all_exc_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle uncaught exceptions with a sanitized 500 envelope."""
     if not request.scope.get("_error_logged"):
@@ -134,4 +102,47 @@ async def catch_all_exc_handler(request: Request, exc: Exception) -> JSONRespons
     return internal_error_response()
 
 
-app.include_router(v1_router, prefix="/api/v1")
+def create_app() -> FastAPI:
+    """Construct and configure the FastAPI application instance."""
+    application = FastAPI(
+        title=settings.API_TITLE,
+        version=settings.API_VERSION,
+        description=settings.API_DESCRIPTION,
+        openapi_url=settings.OPENAPI_URL,
+        docs_url=settings.API_DOCS_URL,
+        redoc_url=settings.API_REDOC_URL,
+        lifespan=lifespan,
+        generate_unique_id_function=_make_operation_id,
+    )
+
+    application.add_middleware(AppSafetyMiddleware)
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["Retry-After"],
+    )
+
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.ALLOWED_HOSTS,
+    )
+
+    if settings.ENFORCE_HTTPS:
+        application.add_middleware(HTTPSRedirectMiddleware)
+
+    application.exception_handler(ApiError)(api_error_handler)
+    application.exception_handler(StarletteHTTPException)(starlette_http_exc_handler)
+    application.exception_handler(FastAPIHTTPException)(fastapi_http_exc_handler)
+    application.exception_handler(RequestValidationError)(validation_exc_handler)
+    application.exception_handler(Exception)(catch_all_exc_handler)
+
+    application.include_router(v1_router, prefix="/api/v1")
+
+    return application
+
+
+app = create_app()
