@@ -24,4 +24,8 @@ while read -r local_ref local_oid remote_ref remote_oid; do
 done
 
 echo "Running pre-push verification gates..."
-python scripts/verify.py
+if command -v uv >/dev/null 2>&1; then
+    uv run python scripts/verify.py
+else
+    python scripts/verify.py
+fi
