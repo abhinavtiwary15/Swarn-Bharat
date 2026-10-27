@@ -9,7 +9,7 @@ from backend.core.config import settings
 
 def _client(db: int) -> aioredis.Redis:
     pool = aioredis.ConnectionPool.from_url(
-        f"{settings.REDIS_BASE_URL}/{db}",
+        settings.redis_url(db),
         decode_responses=True,
     )
     return aioredis.Redis(connection_pool=pool)

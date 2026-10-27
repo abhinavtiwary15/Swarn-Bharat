@@ -10,6 +10,10 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.core.config import settings
+from backend.core.database import get_db
+from backend.core.redis import redis_rl
 from swarnbharat_shared.common import (
     ErrorCode,
     ErrorDetail,
@@ -17,10 +21,6 @@ from swarnbharat_shared.common import (
     HealthEnvelope,
     HealthStatus,
 )
-
-from backend.core.config import settings
-from backend.core.database import get_db
-from backend.core.redis import redis_rl
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +34,13 @@ async def _check_dependencies(
 
     try:
         await db.execute(text("SELECT 1"))
-    except (SQLAlchemyError, OSError, RedisError) as exc:
+    except (SQLAlchemyError, OSError) as exc:
         logger.warning("Database probe failed: %s", type(exc).__name__)
         unavailable.append("database")
 
     try:
         await redis_rl.ping()
-    except (SQLAlchemyError, OSError, RedisError) as exc:
+    except (RedisError, OSError) as exc:
         logger.warning("Redis probe failed: %s", type(exc).__name__)
         unavailable.append("redis")
 

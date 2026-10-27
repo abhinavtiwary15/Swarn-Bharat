@@ -1,12 +1,32 @@
 {
   "components": {
     "schemas": {
+      "ErrorCode": {
+        "description": "Machine-readable error codes used across the API.",
+        "enum": [
+          "BAD_REQUEST",
+          "UNAUTHORIZED",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "METHOD_NOT_ALLOWED",
+          "CONFLICT",
+          "VALIDATION_ERROR",
+          "RATE_LIMIT_EXCEEDED",
+          "INTERNAL_SERVER_ERROR",
+          "SERVICE_UNAVAILABLE",
+          "RATE_LIMITER_UNAVAILABLE",
+          "TOKEN_EXPIRED",
+          "TOKEN_INVALID",
+          "HTTP_ERROR"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
       "ErrorDetail": {
         "description": "Machine-readable error detail included in error envelopes.",
         "properties": {
           "code": {
-            "title": "Code",
-            "type": "string"
+            "$ref": "#/components/schemas/ErrorCode"
           },
           "field": {
             "anyOf": [
@@ -100,7 +120,7 @@
     }
   },
   "info": {
-    "description": "REST API for the Swarn Bharat platform.\n\n### Architecture & Contracts\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Authentication uses Bearer JWT tokens. Access tokens expire in 15 minutes; refresh tokens expire in 7 days with single-use rotation.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
+    "description": "REST API for Swarn Bharat API.\n\n### API conventions\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Authentication uses Bearer JWT tokens. Access tokens expire in 15 minutes; refresh tokens expire in 7 days with single-use rotation.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
     "title": "Swarn Bharat API",
     "version": "1.0.0"
   },
@@ -120,16 +140,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "One or more dependencies unavailable"
           }
         },
         "summary": "Liveness probe",

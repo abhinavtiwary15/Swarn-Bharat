@@ -54,6 +54,7 @@ async def test_health_ready_returns_503_when_redis_down(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import redis.exceptions
+
     from backend.core.redis import redis_rl
 
     async def _failing_ping() -> bool:

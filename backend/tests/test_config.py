@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from backend.core.config import Settings
 from pydantic import ValidationError
+
+from backend.core.config import Settings
 
 
 def _base_kwargs() -> dict[str, Any]:
