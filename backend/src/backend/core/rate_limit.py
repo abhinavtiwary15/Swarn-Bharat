@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import math
 import time
-from collections.abc import Callable, Coroutine
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import redis.exceptions
@@ -22,10 +22,11 @@ RETRY_AFTER_UNAVAILABLE = "5"
 def fixed_window(
     times: int,
     seconds: int,
-) -> Callable[[Request], Coroutine[Any, Any, None]]:
+) -> Callable[[Request], Awaitable[None]]:
     """Return a FastAPI dependency enforcing a fixed-window rate limit."""
 
     async def _check(request: Request) -> None:
+        # Fallback to 'unknown' if client connection info is not available on the request.
         ip = request.client.host if request.client else "unknown"
         path = request.url.path
         window = int(time.time()) // seconds
@@ -34,6 +35,7 @@ def fixed_window(
         try:
             async with redis_rl.pipeline(transaction=True) as pipe:
                 pipe.incr(key)
+                # Refresh TTL on each hit to prevent eviction before the window boundary elapses.
                 pipe.expire(key, seconds * 2)
                 results: list[Any] = await pipe.execute()
         except redis.exceptions.RedisError as exc:

@@ -7,13 +7,26 @@ import logging
 from starlette.datastructures import MutableHeaders
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-from swarnbharat_shared.common import ApiResponse, ErrorCode, ErrorDetail
+from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
 
 from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 HSTS_HEADER_VALUE = "max-age=31536000; includeSubDomains"
+
+
+def internal_error_response() -> JSONResponse:
+    """Build a standard 500 Internal Server Error envelope."""
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            error=ErrorDetail(
+                code=ErrorCode.INTERNAL_SERVER_ERROR,
+                message="An unexpected error occurred.",
+            )
+        ).model_dump(mode="json"),
+    )
 
 
 class AppSafetyMiddleware:
@@ -41,6 +54,7 @@ class AppSafetyMiddleware:
         try:
             await self.app(scope, receive, send_wrapper)
         except Exception:
+            scope["_error_logged"] = True
             logger.exception(
                 "Unhandled exception: %s %s",
                 scope.get("method"),
@@ -49,14 +63,5 @@ class AppSafetyMiddleware:
             if response_started:
                 raise
 
-            err_resp = JSONResponse(
-                status_code=500,
-                content=ApiResponse[None](
-                    success=False,
-                    error=ErrorDetail(
-                        code=ErrorCode.INTERNAL_SERVER_ERROR,
-                        message="An unexpected error occurred.",
-                    ),
-                ).model_dump(mode="json"),
-            )
+            err_resp = internal_error_response()
             await err_resp(scope, receive, send_wrapper)

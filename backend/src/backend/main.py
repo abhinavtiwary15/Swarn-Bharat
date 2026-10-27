@@ -16,11 +16,11 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
-from swarnbharat_shared.common import ApiResponse, ErrorCode, ErrorDetail
+from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
 
 from backend.api.v1.router import v1_router
 from backend.core.config import settings
-from backend.core.middleware import AppSafetyMiddleware
+from backend.core.middleware import AppSafetyMiddleware, internal_error_response
 from backend.core.redis import close_all
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ def _build_http_response(exc: StarletteHTTPException) -> JSONResponse:
         error = ErrorDetail(code=code, message=str(exc.detail))
     return JSONResponse(
         status_code=exc.status_code,
-        content=ApiResponse[None](success=False, error=error).model_dump(mode="json"),
+        content=ErrorResponse(error=error).model_dump(mode="json"),
         headers=dict(exc.headers or {}),
     )
 
@@ -121,24 +121,17 @@ async def validation_exc_handler(request: Request, exc: RequestValidationError) 
     )
     return JSONResponse(
         status_code=422,
-        content=ApiResponse[None](success=False, error=error).model_dump(mode="json"),
+        content=ErrorResponse(error=error).model_dump(mode="json"),
     )
 
 
 @app.exception_handler(Exception)
 async def catch_all_exc_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle uncaught exceptions with a sanitized 500 envelope."""
-    logger.exception("Unhandled exception: %s %s", request.method, request.url.path)
-    return JSONResponse(
-        status_code=500,
-        content=ApiResponse[None](
-            success=False,
-            error=ErrorDetail(
-                code=ErrorCode.INTERNAL_SERVER_ERROR,
-                message="An unexpected error occurred.",
-            ),
-        ).model_dump(mode="json"),
-    )
+    if not request.scope.get("_error_logged"):
+        request.scope["_error_logged"] = True
+        logger.exception("Unhandled exception: %s %s", request.method, request.url.path)
+    return internal_error_response()
 
 
 app.include_router(v1_router, prefix="/api/v1")
