@@ -6,7 +6,7 @@ dependencies = [
     "swarnbharat-shared",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
-    "sqlalchemy[asyncio]>=2.0",
+    "sqlalchemy[asyncio]>=2.1.6",
     "asyncpg>=0.30",
     "pgvector>=0.3",
     "alembic>=1.13",
