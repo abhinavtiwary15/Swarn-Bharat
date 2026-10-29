@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,10 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import settings
 from backend.core.database import get_db
+from backend.core.errors import ApiError
 from backend.core.redis import redis_rl
 from swarnbharat_shared.common import (
     ErrorCode,
-    ErrorDetail,
     ErrorResponse,
     HealthEnvelope,
     HealthStatus,
@@ -72,19 +71,16 @@ async def live() -> HealthEnvelope:
 )
 async def ready(
     db: AsyncSession = Depends(get_db),
-) -> HealthEnvelope | JSONResponse:
+) -> HealthEnvelope:
     """Readiness probe returning 503 when downstream dependencies are degraded."""
     ok, unavailable = await _check_dependencies(db)
     if not ok:
         deps_str = ", ".join(unavailable)
-        return JSONResponse(
+        raise ApiError(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=ErrorResponse(
-                error=ErrorDetail(
-                    code=ErrorCode.SERVICE_UNAVAILABLE,
-                    message=f"Unavailable dependencies: {deps_str}",
-                ),
-            ).model_dump(mode="json"),
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message=f"Unavailable dependencies: {deps_str}",
+            headers={"Retry-After": "5"},
         )
     return HealthEnvelope(
         data=HealthStatus(version=settings.API_VERSION),

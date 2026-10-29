@@ -42,6 +42,7 @@ async def test_health_ready_returns_503_when_db_down(
     monkeypatch.setattr(AsyncSession, "execute", _failing_execute)
     r = await client.get("/api/v1/health/ready")
     assert r.status_code == 503
+    assert r.headers.get("retry-after") == "5"
     body = r.json()
     assert body["success"] is False
     assert body["data"] is None
@@ -63,6 +64,7 @@ async def test_health_ready_returns_503_when_redis_down(
     monkeypatch.setattr(redis_rl, "ping", _failing_ping)
     r = await client.get("/api/v1/health/ready")
     assert r.status_code == 503
+    assert r.headers.get("retry-after") == "5"
     body = r.json()
     assert body["success"] is False
     assert body["data"] is None

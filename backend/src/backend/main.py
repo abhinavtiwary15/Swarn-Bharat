@@ -55,11 +55,8 @@ _STATUS_CODES: dict[int, ErrorCode] = {
 
 
 def _build_http_response(exc: StarletteHTTPException) -> JSONResponse:
-    if isinstance(exc.detail, dict):
-        error = ErrorDetail(**exc.detail)
-    else:
-        code = _STATUS_CODES.get(exc.status_code, ErrorCode.HTTP_ERROR)
-        error = ErrorDetail(code=code, message=str(exc.detail))
+    code = _STATUS_CODES.get(exc.status_code, ErrorCode.HTTP_ERROR)
+    error = ErrorDetail(code=code, message=str(exc.detail))
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(error=error).model_dump(mode="json"),
@@ -107,7 +104,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=settings.API_TITLE,
         version=settings.API_VERSION,
-        description=settings.API_DESCRIPTION,
+        description=settings.openapi_description,
         openapi_url=settings.OPENAPI_URL,
         docs_url=settings.API_DOCS_URL,
         redoc_url=settings.API_REDOC_URL,
