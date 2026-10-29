@@ -15,4 +15,4 @@ Implement a custom fixed-window rate limiter directly on Redis:
 - Limit violations return HTTP 429 (`RATE_LIMIT_EXCEEDED`) with a calculated `Retry-After` header.
 
 ## Consequences
-No untrusted header spoofing. Predictable failure modes and zero dependencies on fragile third-party limiter packages.
+No untrusted header spoofing. Predictable failure modes and zero dependencies on fragile third-party limiter packages. The architecture relies on a standalone single-node Redis deployment partitioned using logical database indexes (e.g., DB 12 for tokens, DB 13 for rate limiting, DB 14 for throttling) and does not support Redis Cluster, which only permits database index 0.

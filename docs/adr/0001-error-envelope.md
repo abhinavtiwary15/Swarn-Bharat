@@ -11,7 +11,7 @@ All endpoints return responses wrapped in uniform schema envelopes:
 - Success: `SuccessEnvelope[T]` -> `{"success": true, "data": <T>, "error": null}`
 - Error: `ErrorResponse` -> `{"success": false, "data": null, "error": {"code": "...", "message": "...", "field": null}}`
 
-Concrete response classes (e.g., `HealthEnvelope`) inherit from `SuccessEnvelope[T]` to avoid generic schema naming in OpenAPI. Error responses are formalized with the concrete `ErrorResponse` schema and `ErrorCode` enumeration. Starlette and FastAPI HTTP exceptions, validation errors (422), and unexpected server errors (500) are mapped to `ErrorResponse`.
+Concrete response classes (e.g., `HealthEnvelope`) inherit from `SuccessEnvelope[T]` to avoid generic schema naming in OpenAPI. Error responses are formalized with the concrete `ErrorResponse` schema and `ErrorCode` enumeration. Starlette and FastAPI HTTP exceptions, validation errors (422), and unexpected server errors (500) are mapped to `ErrorResponse`. Framework-level middleware responses generated before ASGI routing (e.g., HTTP-to-HTTPS redirects from `HTTPSRedirectMiddleware` and host header rejections from `TrustedHostMiddleware`) bypass application exception handlers and emit standard Starlette responses outside the envelope.
 
 ## Consequences
 Clients parse a single envelope shape across all endpoints and status codes. Internal traceback details are kept server-side and never leaked in error payloads.

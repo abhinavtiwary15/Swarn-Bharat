@@ -96,6 +96,10 @@ uv run python scripts/export_openapi.py --check
 
 `pyproject.toml` defines `constraint-dependencies = ["kombu<5.7"]`. This avoids unreleased release candidates (such as kombu 5.7.0rc1) and caps `redis<6.5` (resolving to stable redis 6.4.0) to maintain stable async connection pool semantics across Celery and application code.
 
+## Redis Topology
+
+The system targets a standalone single-node Redis deployment utilizing separate logical database numbers for key isolation (rate limiting, tokens, throttling, and task broker). It does not support Redis Cluster, which restricts multi-database indexing to DB 0.
+
 ## Health Probes
 
 - `GET /api/v1/health/live`: Liveness probe returning HTTP 200 as long as the process is running.
