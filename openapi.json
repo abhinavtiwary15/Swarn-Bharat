@@ -120,7 +120,7 @@
     }
   },
   "info": {
-    "description": "REST API for Swarn Bharat API.\n\n### API conventions\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Authentication uses Bearer JWT tokens. Access tokens expire in 15 minutes; refresh tokens expire in 7 days with single-use rotation.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
+    "description": "REST API for Swarn Bharat API.\n\n### API conventions\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
     "title": "Swarn Bharat API",
     "version": "1.0.0"
   },

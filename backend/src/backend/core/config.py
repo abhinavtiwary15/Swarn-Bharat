@@ -96,18 +96,11 @@ class Settings(BaseSettings):
             "### API conventions\n"
             "- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success "
             "and `ErrorResponse` on failure.\n"
-            "- Authentication uses Bearer JWT tokens. Access tokens expire in "
-            f"{self.ACCESS_TOKEN_EXPIRE_MINUTES} minutes; refresh tokens expire in "
-            f"{self.REFRESH_TOKEN_EXPIRE_DAYS} days with single-use rotation.\n"
             "- Rate limiting is enforced using fixed windows with standard 429 status "
             "and `Retry-After` headers.\n"
             "- Degraded downstream dependencies trigger 503 Service Unavailable "
             "with `Retry-After` headers."
         )
-
-    @property
-    def API_DESCRIPTION(self) -> str:
-        return self.openapi_description
 
     @field_validator("API_DOCS_URL", "API_REDOC_URL", mode="before")
     @classmethod
