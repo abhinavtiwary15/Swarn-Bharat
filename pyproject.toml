@@ -21,7 +21,6 @@ dev = [
     "httpx>=0.27",
     "asgi-lifespan>=2.1",
     "pip-audit>=2.7",
-    "pydantic[email]>=2.0",  # supplies email-validator for EmailStr in workspace dev tools
 ]
 
 [tool.ruff]
