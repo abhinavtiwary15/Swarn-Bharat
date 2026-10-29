@@ -7,7 +7,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi import HTTPException as FastAPIHTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -66,11 +65,6 @@ def _build_http_response(exc: StarletteHTTPException) -> JSONResponse:
 
 async def starlette_http_exc_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Handle Starlette HTTP routing exceptions."""
-    return _build_http_response(exc)
-
-
-async def fastapi_http_exc_handler(request: Request, exc: FastAPIHTTPException) -> JSONResponse:
-    """Handle application HTTP exceptions."""
     return _build_http_response(exc)
 
 
@@ -133,7 +127,6 @@ def create_app() -> FastAPI:
 
     application.exception_handler(ApiError)(api_error_handler)
     application.exception_handler(StarletteHTTPException)(starlette_http_exc_handler)
-    application.exception_handler(FastAPIHTTPException)(fastapi_http_exc_handler)
     application.exception_handler(RequestValidationError)(validation_exc_handler)
     application.exception_handler(Exception)(catch_all_exc_handler)
 
