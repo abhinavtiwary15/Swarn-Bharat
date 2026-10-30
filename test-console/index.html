@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swarn Bharat — API Test Harness</title>
+  <style>
+    body { font-family: monospace; max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.1rem; }
+    label { display: block; margin-top .5rem; font-size .85rem; }
+    input, textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: .85rem; padding: .3rem; }
+    button { margin-top: .5rem; padding: .3rem .8rem; cursor: pointer; }
+    pre { background: #f4f4f4; padding: .75rem; font-size: .8rem; overflow: auto; white-space: pre-wrap; }
+    details { margin: 1rem 0; border: 1px solid #ccc; padding: .5rem; }
+    summary { cursor: pointer; font-weight: bold; }
+    .ok   { color: green; }
+    .err  { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Swarn Bharat — API Test Harness</h1>
+  <p><em>No design, no polish. Only purpose: prove the backend works.</em></p>
+
+  <label>Base URL
+    <input id="baseUrl" value="http://localhost:8000">
+  </label>
+  <label>Bearer token (paste after login)
+    <input id="bearerToken" placeholder="paste access_token here">
+  </label>
+  <hr>
+
+  <!-- ── Health ─────────────────────────────────────────────────────────── -->
+  <details open>
+    <summary>Health</summary>
+
+    <button onclick="req('GET','/api/v1/health/live','health-resp')">GET /health/live</button>
+    <button onclick="req('GET','/api/v1/health/ready','ready-resp')">GET /health/ready</button>
+    <pre id="health-resp">—</pre>
+    <pre id="ready-resp">—</pre>
+  </details>
+
+  <script src="app.js"></script>
+</body>
+</html>
