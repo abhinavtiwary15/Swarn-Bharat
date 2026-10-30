@@ -2,7 +2,7 @@
 name = "swarnbharat-shared"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["pydantic[email]>=2.0"]
+dependencies = ["pydantic[email]>=2.14.1"]
 
 [build-system]
 requires = ["hatchling"]
