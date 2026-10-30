@@ -117,19 +117,19 @@ The committed `openapi.json` at repository root serves as the authoritative cont
 
 Open `test-console/index.html` directly in any web browser. It interacts with the backend API via standard `fetch` calls.
 
-## Production Startup
+## Deployment notes
 
-Start Uvicorn behind a trusted reverse proxy:
+In production deployments behind a reverse proxy (such as Nginx, Cloudflare, or AWS ALB), run Uvicorn with `--proxy-headers` and explicitly list trusted proxy IPs:
 
 ```bash
 uv run uvicorn backend.main:app \
   --host 0.0.0.0 \
   --port 8000 \
   --proxy-headers \
-  --forwarded-allow-ips="<PROXY_IP>"
+  --forwarded-allow-ips="<proxy IPs>"
 ```
 
-Do not set `--forwarded-allow-ips=*` in production, as that permits clients to spoof `X-Forwarded-For` and bypass rate limits. Set `ENFORCE_HTTPS=true`, `ALLOWED_HOSTS`, and `CORS_ORIGINS` for production environments.
+Never set `--forwarded-allow-ips="*"` in production, as trusting arbitrary proxy headers allows clients to spoof `X-Forwarded-For` and circumvent client IP identification. Rate limiting relies on the client IP populated by Uvicorn's proxy headers handling; see [ADR 0002: Rate Limiter](docs/adr/0002-rate-limiter.md). Do not add app-level `X-Forwarded-For` parsing. Ensure `ENFORCE_HTTPS=true`, `ALLOWED_HOSTS`, and `CORS_ORIGINS` are configured for production environments.
 
 ## Celery Worker
 
