@@ -70,7 +70,10 @@ def create_refresh_token(
     subject: str | UUID,
     jti: str | None = None,
 ) -> tuple[str, str]:
-    """Create a signed JWT refresh token and return (token, jti)."""
+    """Create a signed JWT refresh token and return (token, jti).
+
+    Note: Redis state is authoritative for validity; the JWT exp claim is advisory.
+    """
     sub = str(subject)
     token_jti = jti or str(uuid4())
     now = datetime.now(UTC)
