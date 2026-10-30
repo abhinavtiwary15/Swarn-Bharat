@@ -59,7 +59,14 @@ if string.sub(old_val, 1, 8) == "rotated:" then
     local grace_until = tonumber(parts[2])
 
     if now < grace_until then
-        return "GRACE:" .. replacement_jti
+        -- Single-node Redis constraint: successor key ('tok:' .. replacement_jti) is dynamically
+        -- queried, valid on standalone Redis (ADR 0002) but not on Redis Cluster.
+        local successor_val = redis.call("GET", "tok:" .. replacement_jti)
+        if successor_val == "active" then
+            return "GRACE:" .. replacement_jti
+        else
+            return "REVOKED"
+        end
     else
         redis.call("SET", old_key, "revoked", "EX", refresh_ttl)
         -- Single-node Redis constraint: replacement_key ('tok:' .. replacement_jti) is dynamically

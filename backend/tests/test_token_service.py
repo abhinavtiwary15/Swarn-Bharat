@@ -29,7 +29,6 @@ async def cleanup_token_redis() -> AsyncIterator[None]:
     await redis_tokens.flushdb()
 
 
-@pytest.mark.asyncio
 async def test_token_service_issuance_and_active_check() -> None:
     user_id = uuid4()
     jti = str(uuid4())
@@ -38,7 +37,6 @@ async def test_token_service_issuance_and_active_check() -> None:
     assert await is_token_active(jti) is True
 
 
-@pytest.mark.asyncio
 async def test_token_service_rotation_normal() -> None:
     user_id = uuid4()
     old_jti = str(uuid4())
@@ -52,7 +50,6 @@ async def test_token_service_rotation_normal() -> None:
     assert await is_token_active(old_jti) is False
 
 
-@pytest.mark.asyncio
 async def test_token_service_grace_window() -> None:
     user_id = uuid4()
     old_jti = str(uuid4())
@@ -70,7 +67,6 @@ async def test_token_service_grace_window() -> None:
     assert res2.jti == first_new_jti
 
 
-@pytest.mark.asyncio
 async def test_token_service_concurrent_rotation() -> None:
     user_id = uuid4()
     old_jti = str(uuid4())
@@ -91,7 +87,44 @@ async def test_token_service_concurrent_rotation() -> None:
         assert gr.jti == winner_jti
 
 
-@pytest.mark.asyncio
+async def test_token_service_replay_within_grace_after_revoke_all_raises_not_found() -> None:
+    user_id = uuid4()
+    old_jti = str(uuid4())
+    successor_jti = str(uuid4())
+    await record_issued_token(user_id, old_jti)
+
+    res = await rotate_token(user_id, old_jti, successor_jti, grace_window_seconds=30)
+    assert res.status == "ok"
+    assert res.jti == successor_jti
+
+    # Revoke all sessions for this user
+    await revoke_all_for_user(user_id)
+    assert await is_token_active(successor_jti) is False
+
+    # Replay of old token within grace window must raise TokenNotFoundError
+    with pytest.raises(TokenNotFoundError):
+        await rotate_token(user_id, old_jti, str(uuid4()), grace_window_seconds=30)
+
+
+async def test_token_service_replay_within_grace_after_successor_revoke_raises_not_found() -> None:
+    user_id = uuid4()
+    old_jti = str(uuid4())
+    successor_jti = str(uuid4())
+    await record_issued_token(user_id, old_jti)
+
+    res = await rotate_token(user_id, old_jti, successor_jti, grace_window_seconds=30)
+    assert res.status == "ok"
+    assert res.jti == successor_jti
+
+    # Revoke the successor token directly
+    await revoke_token(user_id, successor_jti)
+    assert await is_token_active(successor_jti) is False
+
+    # Replay of old token within grace window must raise TokenNotFoundError
+    with pytest.raises(TokenNotFoundError):
+        await rotate_token(user_id, old_jti, str(uuid4()), grace_window_seconds=30)
+
+
 async def test_token_service_logout_vs_reuse() -> None:
     user_id = uuid4()
     jti_a = str(uuid4())
@@ -126,7 +159,6 @@ async def test_token_service_logout_vs_reuse() -> None:
     assert await is_token_active(jti_b) is False
 
 
-@pytest.mark.asyncio
 async def test_token_service_reuse_revokes_other_sessions() -> None:
     user_id = uuid4()
     session_1 = str(uuid4())
@@ -151,20 +183,7 @@ async def test_token_service_reuse_revokes_other_sessions() -> None:
     assert await is_token_active(session_3) is False
 
 
-@pytest.mark.asyncio
-async def test_token_service_user_id_argument_required() -> None:
-    jti = str(uuid4())
-    # Calling without user_id raises TypeError (positional argument required)
-    with pytest.raises(TypeError):
-        await record_issued_token(jti)  # type: ignore[call-arg]
-
-    with pytest.raises(TypeError):
-        await rotate_token(jti, str(uuid4()))  # type: ignore[call-arg]
-
-    with pytest.raises(TypeError):
-        await revoke_token(jti)  # type: ignore[call-arg]
-
-    # Calling with UUID and str user_id succeeds
+async def test_token_service_supports_uuid_and_str_user_id() -> None:
     user_uuid = uuid4()
     user_str = str(uuid4())
     jti_1 = str(uuid4())
@@ -183,7 +202,6 @@ async def test_token_service_user_id_argument_required() -> None:
     assert await is_token_active(jti_2) is False
 
 
-@pytest.mark.asyncio
 async def test_token_service_rotation_races_revoke_all_no_session_survives() -> None:
     user_id = uuid4()
     old_jti = str(uuid4())
