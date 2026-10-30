@@ -47,6 +47,7 @@ class AppSafetyMiddleware:
             if message["type"] == "http.response.start":
                 response_started = True
                 if settings.ENFORCE_HTTPS:
+                    message.setdefault("headers", [])
                     headers = MutableHeaders(scope=message)
                     headers["strict-transport-security"] = HSTS_HEADER_VALUE
             await send(message)
