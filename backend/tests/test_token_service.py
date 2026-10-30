@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
+from typing import cast
 from uuid import uuid4
 
 import pytest
 
 from backend.core.redis import redis_tokens
 from backend.services.token_service import (
+    TokenError,
     TokenNotFoundError,
     TokenReuseError,
     is_token_active,
@@ -221,3 +223,79 @@ async def test_token_service_rotation_races_revoke_all_no_session_survives() -> 
     # After race settles, no session survives
     assert await is_token_active(old_jti) is False
     assert await is_token_active(new_jti) is False
+
+
+async def test_token_service_rotation_collision_identical_jti() -> None:
+    user_id = uuid4()
+    jti = str(uuid4())
+    await record_issued_token(user_id, jti)
+
+    # Rotating to the exact same jti triggers COLLISION in the Lua active branch
+    with pytest.raises(TokenError, match="Collision detected on replacement token jti") as exc_info:
+        await rotate_token(user_id, jti, jti)
+    # TokenError is raised, not TokenNotFoundError
+    assert not isinstance(exc_info.value, TokenNotFoundError)
+
+    # The existing token remains active
+    assert await is_token_active(jti) is True
+
+    # User's session set remains intact
+    members = await cast(Awaitable[set[str]], redis_tokens.smembers(f"tok:user:{user_id}"))
+    assert members == {jti}
+
+
+async def test_token_service_rotation_collision_existing_successor() -> None:
+    user_id = uuid4()
+    old_jti = str(uuid4())
+    existing_successor_jti = str(uuid4())
+
+    await record_issued_token(user_id, old_jti)
+    await record_issued_token(user_id, existing_successor_jti)
+
+    # Attempting to rotate old_jti to existing_successor_jti triggers COLLISION
+    with pytest.raises(TokenError, match="Collision detected on replacement token jti") as exc_info:
+        await rotate_token(user_id, old_jti, existing_successor_jti)
+    assert not isinstance(exc_info.value, TokenNotFoundError)
+
+    # Both tokens remain active and unchanged
+    assert await is_token_active(old_jti) is True
+    assert await is_token_active(existing_successor_jti) is True
+
+    # User's session set remains unchanged with both tokens
+    members = await cast(Awaitable[set[str]], redis_tokens.smembers(f"tok:user:{user_id}"))
+    assert members == {old_jti, existing_successor_jti}
+
+
+async def test_token_service_failed_rotation_leaves_session_set_unchanged() -> None:
+    user_id = uuid4()
+    active_jti = str(uuid4())
+    logged_out_jti = str(uuid4())
+
+    await record_issued_token(user_id, active_jti)
+    await record_issued_token(user_id, logged_out_jti)
+    await revoke_token(user_id, logged_out_jti)
+
+    # Current session set contains only active_jti
+    initial_members = await cast(Awaitable[set[str]], redis_tokens.smembers(f"tok:user:{user_id}"))
+    assert initial_members == {active_jti}
+
+    # 1. Rotation of non-existent token fails (TokenNotFoundError)
+    with pytest.raises(TokenNotFoundError):
+        await rotate_token(user_id, str(uuid4()), str(uuid4()))
+    assert await cast(Awaitable[set[str]], redis_tokens.smembers(f"tok:user:{user_id}")) == {
+        active_jti
+    }
+
+    # 2. Rotation of revoked token fails (TokenNotFoundError)
+    with pytest.raises(TokenNotFoundError):
+        await rotate_token(user_id, logged_out_jti, str(uuid4()))
+    assert await cast(Awaitable[set[str]], redis_tokens.smembers(f"tok:user:{user_id}")) == {
+        active_jti
+    }
+
+    # 3. Collision fails (TokenError)
+    with pytest.raises(TokenError):
+        await rotate_token(user_id, active_jti, active_jti)
+    assert await cast(Awaitable[set[str]], redis_tokens.smembers(f"tok:user:{user_id}")) == {
+        active_jti
+    }

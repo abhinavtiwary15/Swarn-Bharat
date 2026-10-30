@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 # - Distinguishes explicit logouts ("REVOKED") from replayed rotated tokens ("REUSE").
 # - Within grace window, returns existing replacement jti for idempotent client recovery.
 # - Atomically handles token keys and user-session set membership.
+# - Single-node Redis constraint: dynamically constructed/queried keys
+#   ('tok:' .. replacement_jti/jti) and multi-key commands are valid on standalone
+#   Redis (ADR 0002) but not on Redis Cluster.
 _ROTATION_LUA_SCRIPT = """
 local old_key = KEYS[1]
 local new_key = KEYS[2]
@@ -40,6 +43,10 @@ if old_val == "revoked" then
 end
 
 if old_val == "active" then
+    if redis.call("EXISTS", new_key) == 1 then
+        return "COLLISION"
+    end
+
     local grace_until = now + grace_window
     local rotated_val = "rotated:" .. new_jti .. ":" .. tostring(grace_until)
     redis.call("SET", old_key, rotated_val, "EX", refresh_ttl)
@@ -59,8 +66,6 @@ if string.sub(old_val, 1, 8) == "rotated:" then
     local grace_until = tonumber(parts[2])
 
     if now < grace_until then
-        -- Single-node Redis constraint: successor key ('tok:' .. replacement_jti) is dynamically
-        -- queried, valid on standalone Redis (ADR 0002) but not on Redis Cluster.
         local successor_val = redis.call("GET", "tok:" .. replacement_jti)
         if successor_val == "active" then
             return "GRACE:" .. replacement_jti
@@ -69,8 +74,6 @@ if string.sub(old_val, 1, 8) == "rotated:" then
         end
     else
         redis.call("SET", old_key, "revoked", "EX", refresh_ttl)
-        -- Single-node Redis constraint: replacement_key ('tok:' .. replacement_jti) is dynamically
-        -- constructed, valid on standalone Redis (ADR 0002) but not on Redis Cluster.
         if replacement_jti then
             redis.call("SET", "tok:" .. replacement_jti, "revoked", "EX", refresh_ttl)
         end
@@ -91,8 +94,6 @@ local members = redis.call("SMEMBERS", user_key)
 local count = #members
 
 for i = 1, count do
-    -- Single-node Redis constraint: session keys ('tok:' .. jti) are dynamically
-    -- constructed, valid on standalone Redis (ADR 0002) but not on Redis Cluster.
     redis.call("SET", "tok:" .. members[i], "revoked", "EX", refresh_ttl)
 end
 
@@ -167,6 +168,9 @@ async def rotate_token(
         logger.warning("Token reuse detected for jti %s, user %s", old_jti, user_id)
         await revoke_all_for_user(user_id)
         raise TokenReuseError(f"Refresh token reuse detected for jti {old_jti}")
+
+    if result_str == "COLLISION":
+        raise TokenError(f"Collision detected on replacement token jti {new_jti}")
 
     if result_str in ("NOT_FOUND", "REVOKED"):
         raise TokenNotFoundError(f"Refresh token {old_jti} not found or expired")
