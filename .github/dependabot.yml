@@ -15,6 +15,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    versioning-strategy: "lockfile-only"
     open-pull-requests-limit: 3
     ignore:
       # kombu<5.7 caps redis<6.5

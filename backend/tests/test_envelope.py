@@ -8,7 +8,6 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_404_uses_envelope(client: AsyncClient) -> None:
     r = await client.get("/api/v1/does-not-exist")
     assert r.status_code == 404
@@ -19,7 +18,6 @@ async def test_404_uses_envelope(client: AsyncClient) -> None:
     assert body["error"]["message"]
 
 
-@pytest.mark.asyncio
 async def test_405_uses_envelope(client: AsyncClient) -> None:
     r = await client.delete("/api/v1/health/live")
     assert r.status_code == 405
@@ -28,7 +26,6 @@ async def test_405_uses_envelope(client: AsyncClient) -> None:
     assert body["error"]["code"] == "METHOD_NOT_ALLOWED"
 
 
-@pytest.mark.asyncio
 async def test_422_uses_envelope(client: AsyncClient) -> None:
     r = await client.post("/_test/validate", json={})
     assert r.status_code == 422
@@ -40,7 +37,6 @@ async def test_422_uses_envelope(client: AsyncClient) -> None:
     assert error["message"]
 
 
-@pytest.mark.asyncio
 async def test_api_error_uses_envelope(client: AsyncClient) -> None:
     r = await client.get("/_test/api-error")
     assert r.status_code == 400
@@ -54,7 +50,6 @@ async def test_api_error_uses_envelope(client: AsyncClient) -> None:
     assert error["field"] == "test_field"
 
 
-@pytest.mark.asyncio
 async def test_500_uses_envelope(client: AsyncClient) -> None:
     r = await client.get("/_test/boom")
     assert r.status_code == 500
@@ -64,7 +59,6 @@ async def test_500_uses_envelope(client: AsyncClient) -> None:
     assert "forced 500" not in body["error"]["message"]
 
 
-@pytest.mark.asyncio
 async def test_500_logs_exception(client: AsyncClient, caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.ERROR):
         r = await client.get("/_test/boom")
@@ -72,7 +66,6 @@ async def test_500_logs_exception(client: AsyncClient, caplog: pytest.LogCapture
     assert any("Unhandled exception" in record.message for record in caplog.records)
 
 
-@pytest.mark.asyncio
 async def test_500_cors_headers_preserved_on_exception(client: AsyncClient) -> None:
     origin = "http://localhost:3000"
     r = await client.get("/_test/boom", headers={"Origin": origin})
@@ -83,7 +76,6 @@ async def test_500_cors_headers_preserved_on_exception(client: AsyncClient) -> N
     assert r.headers.get("access-control-allow-origin") == origin
 
 
-@pytest.mark.asyncio
 async def test_exception_after_response_started_is_reraised(client: AsyncClient) -> None:
     with pytest.raises(RuntimeError, match="stream failure after start"):
         await client.get("/_test/started-fail")

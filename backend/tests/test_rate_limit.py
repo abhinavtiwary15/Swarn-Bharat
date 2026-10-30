@@ -6,7 +6,6 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_rate_limit_allows_within_limit(client: AsyncClient) -> None:
     for _ in range(2):
         r = await client.get("/_test/rate-limited")
@@ -14,7 +13,6 @@ async def test_rate_limit_allows_within_limit(client: AsyncClient) -> None:
         assert r.json()["ok"] is True
 
 
-@pytest.mark.asyncio
 async def test_rate_limit_blocks_third_request(client: AsyncClient) -> None:
     for _ in range(2):
         await client.get("/_test/rate-limited")
@@ -28,7 +26,6 @@ async def test_rate_limit_blocks_third_request(client: AsyncClient) -> None:
     assert body["data"] is None
 
 
-@pytest.mark.asyncio
 async def test_rate_limit_retry_after_header(client: AsyncClient) -> None:
     for _ in range(2):
         await client.get("/_test/rate-limited")
@@ -39,13 +36,11 @@ async def test_rate_limit_retry_after_header(client: AsyncClient) -> None:
     assert int(r.headers["retry-after"]) > 0
 
 
-@pytest.mark.asyncio
 async def test_rate_limit_resets_after_flush(client: AsyncClient) -> None:
     r = await client.get("/_test/rate-limited")
     assert r.status_code == 200
 
 
-@pytest.mark.asyncio
 async def test_rate_limit_different_path_independent(client: AsyncClient) -> None:
     for _ in range(2):
         await client.get("/_test/rate-limited")
@@ -57,7 +52,6 @@ async def test_rate_limit_different_path_independent(client: AsyncClient) -> Non
     assert r.json() == {"ok": True}
 
 
-@pytest.mark.asyncio
 async def test_rate_limit_redis_down_returns_503(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
