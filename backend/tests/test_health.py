@@ -6,7 +6,6 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_health_live_returns_200(client: AsyncClient) -> None:
     r = await client.get("/api/v1/health/live")
     assert r.status_code == 200
@@ -18,7 +17,6 @@ async def test_health_live_returns_200(client: AsyncClient) -> None:
     assert "version" in data
 
 
-@pytest.mark.asyncio
 async def test_health_ready_returns_200(client: AsyncClient) -> None:
     r = await client.get("/api/v1/health/ready")
     assert r.status_code == 200
@@ -30,7 +28,6 @@ async def test_health_ready_returns_200(client: AsyncClient) -> None:
     assert "version" in data
 
 
-@pytest.mark.asyncio
 async def test_health_ready_returns_503_when_db_down(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -50,7 +47,6 @@ async def test_health_ready_returns_503_when_db_down(
     assert "database" in body["error"]["message"]
 
 
-@pytest.mark.asyncio
 async def test_health_ready_returns_503_when_redis_down(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

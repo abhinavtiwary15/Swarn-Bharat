@@ -11,6 +11,7 @@ from uuid import uuid4
 import jwt
 import pytest
 
+import backend.core.security as sec_mod
 from backend.core.config import settings
 from backend.core.security import (
     _password_limiter,
@@ -23,7 +24,6 @@ from backend.core.security import (
 )
 
 
-@pytest.mark.asyncio
 async def test_password_hash_and_verify() -> None:
     raw = "super-secret-password-123"
     hashed = await hash_password(raw)
@@ -32,12 +32,10 @@ async def test_password_hash_and_verify() -> None:
     assert await verify_password("wrong-password", hashed) is False
 
 
-@pytest.mark.asyncio
 async def test_password_verify_dummy_defense_on_none() -> None:
     assert await verify_password("any-password", None) is False
 
 
-@pytest.mark.asyncio
 async def test_password_limiter_bounds_concurrency(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _password_limiter.total_tokens == 4
 
@@ -55,8 +53,6 @@ async def test_password_limiter_bounds_concurrency(monkeypatch: pytest.MonkeyPat
         with lock:
             active_concurrent -= 1
         return f"mock-hash-{secret}"
-
-    import backend.core.security as sec_mod
 
     monkeypatch.setattr(sec_mod._password_hash, "hash", slow_hash)
 

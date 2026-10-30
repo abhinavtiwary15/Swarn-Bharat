@@ -11,6 +11,7 @@ import sqlalchemy as sa
 from asgi_lifespan import LifespanManager
 from fastapi import APIRouter, Depends, FastAPI
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import StreamingResponse
 
 from backend.core.config import settings
@@ -131,6 +132,17 @@ async def managed_app() -> AsyncIterator[FastAPI]:
 async def clean_tables() -> AsyncIterator[None]:
     """Truncate tables between integration test runs."""
     yield
+    async with engine.begin() as conn:
+        await conn.execute(sa.text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
+
+
+@pytest_asyncio.fixture
+async def db_session() -> AsyncIterator[AsyncSession]:
+    """Provide an async database session for tests and truncate users after each test."""
+    from backend.core.database import _SessionLocal
+
+    async with _SessionLocal() as session:
+        yield session
     async with engine.begin() as conn:
         await conn.execute(sa.text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
 
