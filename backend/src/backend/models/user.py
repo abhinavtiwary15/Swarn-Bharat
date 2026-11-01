@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -37,6 +37,7 @@ class User(Base):
     )
 
     __table_args__ = (
+        CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
         Index(
             "uix_users_oauth_sub",
             "oauth_provider",
