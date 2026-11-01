@@ -7,9 +7,9 @@
   <style>
     body { font-family: monospace; max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
     h1 { font-size: 1.1rem; }
-    label { display: block; margin-top .5rem; font-size .85rem; }
+    label { display: block; margin-top: .5rem; font-size: .85rem; }
     input, textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: .85rem; padding: .3rem; }
-    button { margin-top: .5rem; padding: .3rem .8rem; cursor: pointer; }
+    button { margin-top: .5rem; margin-right: .5rem; padding: .3rem .8rem; cursor: pointer; }
     pre { background: #f4f4f4; padding: .75rem; font-size: .8rem; overflow: auto; white-space: pre-wrap; }
     details { margin: 1rem 0; border: 1px solid #ccc; padding: .5rem; }
     summary { cursor: pointer; font-weight: bold; }
@@ -24,8 +24,8 @@
   <label>Base URL
     <input id="baseUrl" value="http://localhost:8000">
   </label>
-  <label>Bearer token (paste after login)
-    <input id="bearerToken" placeholder="paste access_token here">
+  <label>Bearer token (in-memory access_token)
+    <input id="bearerToken" placeholder="in-memory access_token displayed here" readonly>
   </label>
   <hr>
 
@@ -37,6 +37,29 @@
     <button onclick="req('GET','/api/v1/health/ready','ready-resp')">GET /health/ready</button>
     <pre id="health-resp">—</pre>
     <pre id="ready-resp">—</pre>
+  </details>
+
+  <!-- ── Auth ───────────────────────────────────────────────────────────── -->
+  <details open>
+    <summary>Auth</summary>
+
+    <h3>Register</h3>
+    <label>Email: <input id="reg-email" value="alice@example.com"></label>
+    <label>Password: <input id="reg-password" type="password" value="securePassword123"></label>
+    <label>Full Name: <input id="reg-fullname" value="Alice Wonderland"></label>
+    <button onclick="doRegister()">POST /auth/register</button>
+
+    <h3>Login</h3>
+    <label>Email: <input id="login-email" value="alice@example.com"></label>
+    <label>Password: <input id="login-password" type="password" value="securePassword123"></label>
+    <button onclick="doLogin()">POST /auth/login</button>
+
+    <h3>Session Operations</h3>
+    <button onclick="doRefresh()">POST /auth/refresh</button>
+    <button onclick="doLogout()">POST /auth/logout</button>
+    <button onclick="doMe()">GET /auth/me</button>
+
+    <pre id="auth-resp">—</pre>
   </details>
 
   <script src="app.js"></script>

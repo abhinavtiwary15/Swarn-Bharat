@@ -6,7 +6,7 @@ FastAPI backend, PostgreSQL with pgvector, Redis, Celery worker, and plain HTML 
 
 - **Python 3.12** (system installation or managed)
 - **uv** (fast Python package and project manager)
-- **Docker & Docker Compose** (PostgreSQL 16 with pgvector, Redis 7)
+- **Docker & Docker Compose** (PostgreSQL 16 with pgvector, Redis >= 7.0)
 
 ## Repository Layout
 
@@ -35,6 +35,8 @@ Swarn_Bharat/
 Key architectural decisions are documented under [`docs/adr/`](docs/adr):
 - [ADR 0001: Error Envelope](docs/adr/0001-error-envelope.md) - Standardized JSON envelopes for success and error responses.
 - [ADR 0002: Rate Limiter](docs/adr/0002-rate-limiter.md) - Fail-closed token bucket rate limiting with Redis fallback.
+- [ADR 0003: Refresh Token Rotation](docs/adr/0003-refresh-token-rotation.md) - Single-use refresh tokens with atomic rotation, grace period, and reuse detection.
+- [ADR 0004: Login Throttling and Anti-Enumeration](docs/adr/0004-login-throttling-and-anti-enumeration.md) - Fixed-window account lockout, Redis >= 7.0 NX expiration, and anti-enumeration defenses.
 
 ## Quick Start
 
@@ -98,7 +100,15 @@ uv run python scripts/export_openapi.py --check
 
 ## Redis Topology
 
-The system targets a standalone single-node Redis deployment utilizing separate logical database numbers for key isolation (rate limiting, tokens, throttling, and task broker). It does not support Redis Cluster, which restricts multi-database indexing to DB 0.
+The system targets a standalone single-node Redis deployment (Redis >= 7.0 required for atomic fixed-window `EXPIRE ... NX`) utilizing separate logical database numbers for key isolation (rate limiting, tokens, throttling, and task broker). It does not support Redis Cluster, which restricts multi-database indexing to DB 0.
+
+## Auth Endpoints
+
+- `POST /api/v1/auth/register`: Create user account with normalized email, trimmed full name, and Argon2id hashed password. Rate limited (default: 5 req / 60s).
+- `POST /api/v1/auth/login`: Authenticate credentials, returning access token (15m) and single-use refresh token (7d). Fixed-window account lockout after 10 failed attempts (900s window). Rate limited (default: 5 req / 60s). Sets `Cache-Control: no-store` and `Pragma: no-cache`.
+- `POST /api/v1/auth/refresh`: Rotate refresh token with 30s grace window and reuse detection. Rate limited (default: 30 req / 60s). Sets `Cache-Control: no-store` and `Pragma: no-cache`.
+- `POST /api/v1/auth/logout`: Idempotently revoke the presented refresh token session. Rate limited (default: 30 req / 60s).
+- `GET /api/v1/auth/me`: Retrieve current user profile via Bearer access token authentication.
 
 ## Health Probes
 
