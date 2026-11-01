@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 import httpx
 import pytest
 import pytest_asyncio
+import redis.exceptions
 import sqlalchemy as sa
 from asgi_lifespan import LifespanManager
 from fastapi import APIRouter, Depends, FastAPI
@@ -71,6 +72,36 @@ async def _failing_stream() -> AsyncIterator[bytes]:
 @_test_router.get("/started-fail")
 async def _started_fail() -> StreamingResponse:
     return StreamingResponse(_failing_stream())
+
+
+@_test_router.get("/db-operational-error")
+async def _trigger_db_op_error() -> None:
+    raise sa.exc.OperationalError("db op error", {}, Exception())
+
+
+@_test_router.get("/redis-connection-error")
+async def _trigger_redis_conn_error() -> None:
+    raise redis.exceptions.ConnectionError("redis conn down")
+
+
+@_test_router.get("/dbapi-invalidated")
+async def _trigger_dbapi_invalidated() -> None:
+    raise sa.exc.DBAPIError("stmt", {}, Exception(), connection_invalidated=True)
+
+
+@_test_router.get("/dbapi-not-invalidated")
+async def _trigger_dbapi_not_invalidated() -> None:
+    raise sa.exc.DBAPIError("stmt", {}, Exception(), connection_invalidated=False)
+
+
+@_test_router.get("/redis-response-error")
+async def _trigger_redis_response_error() -> None:
+    raise redis.exceptions.ResponseError("bad syntax")
+
+
+@_test_router.get("/os-error")
+async def _trigger_os_error() -> None:
+    raise OSError("disk error")
 
 
 def create_test_app() -> FastAPI:

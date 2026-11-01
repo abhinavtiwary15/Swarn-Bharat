@@ -5,14 +5,16 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, status
-from redis.exceptions import RedisError
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import settings
 from backend.core.database import get_db
-from backend.core.errors import ApiError
+from backend.core.errors import (
+    CENTRAL_CONNECTIVITY_EXCEPTIONS,
+    RETRY_AFTER_SERVICE_UNAVAILABLE,
+    ApiError,
+)
 from backend.core.redis import redis_rl
 from swarnbharat_shared.common import (
     ErrorCode,
@@ -33,13 +35,13 @@ async def _check_dependencies(
 
     try:
         await db.execute(text("SELECT 1"))
-    except (SQLAlchemyError, OSError) as exc:
+    except CENTRAL_CONNECTIVITY_EXCEPTIONS as exc:
         logger.warning("Database probe failed: %s", type(exc).__name__)
         unavailable.append("database")
 
     try:
         await redis_rl.ping()
-    except (RedisError, OSError) as exc:
+    except CENTRAL_CONNECTIVITY_EXCEPTIONS as exc:
         logger.warning("Redis probe failed: %s", type(exc).__name__)
         unavailable.append("redis")
 
@@ -80,7 +82,7 @@ async def ready(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message=f"Unavailable dependencies: {deps_str}",
-            headers={"Retry-After": "5"},
+            headers={"Retry-After": RETRY_AFTER_SERVICE_UNAVAILABLE},
         )
     return HealthEnvelope(
         data=HealthStatus(version=settings.API_VERSION),

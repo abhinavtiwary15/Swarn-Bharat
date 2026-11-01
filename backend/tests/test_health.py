@@ -31,10 +31,11 @@ async def test_health_ready_returns_200(client: AsyncClient) -> None:
 async def test_health_ready_returns_503_when_db_down(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    import sqlalchemy as sa
     from sqlalchemy.ext.asyncio import AsyncSession
 
     async def _failing_execute(*args: object, **kwargs: object) -> None:
-        raise OSError("DB unreachable")
+        raise sa.exc.OperationalError("DB unreachable", {}, Exception())
 
     monkeypatch.setattr(AsyncSession, "execute", _failing_execute)
     r = await client.get("/api/v1/health/ready")

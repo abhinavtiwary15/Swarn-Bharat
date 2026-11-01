@@ -6,6 +6,7 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import sqlalchemy as sa
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,12 @@ from starlette.requests import Request
 from backend.api.v1.router import v1_router
 from backend.core.config import settings
 from backend.core.database import engine
-from backend.core.errors import ApiError, api_error_handler
+from backend.core.errors import (
+    CENTRAL_CONNECTIVITY_EXCEPTIONS,
+    ApiError,
+    api_error_handler,
+    central_connectivity_error_handler,
+)
 from backend.core.middleware import AppSafetyMiddleware, internal_error_response
 from backend.core.redis import close_all
 from swarnbharat_shared.common import ErrorCode, ErrorDetail, ErrorResponse
@@ -126,6 +132,8 @@ def create_app() -> FastAPI:
         application.add_middleware(HTTPSRedirectMiddleware)
 
     application.exception_handler(ApiError)(api_error_handler)
+    for exc_cls in (*CENTRAL_CONNECTIVITY_EXCEPTIONS, sa.exc.DBAPIError):
+        application.exception_handler(exc_cls)(central_connectivity_error_handler)
     application.exception_handler(StarletteHTTPException)(starlette_http_exc_handler)
     application.exception_handler(RequestValidationError)(validation_exc_handler)
     application.exception_handler(Exception)(catch_all_exc_handler)

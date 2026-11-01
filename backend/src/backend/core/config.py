@@ -73,6 +73,12 @@ class Settings(BaseSettings):
 
     LOGIN_RATE_LIMIT_TIMES: int = 5
     LOGIN_RATE_LIMIT_SECONDS: int = 60
+    REGISTER_RATE_LIMIT_TIMES: int = 5
+    REGISTER_RATE_LIMIT_SECONDS: int = 60
+    REFRESH_RATE_LIMIT_TIMES: int = 30
+    REFRESH_RATE_LIMIT_SECONDS: int = 60
+    LOGOUT_RATE_LIMIT_TIMES: int = 30
+    LOGOUT_RATE_LIMIT_SECONDS: int = 60
     MAX_LOGIN_ATTEMPTS: int = 10
     LOGIN_LOCKOUT_SECONDS: int = 900
 
@@ -96,6 +102,19 @@ class Settings(BaseSettings):
             "### API conventions\n"
             "- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success "
             "and `ErrorResponse` on failure.\n"
+            f"- Token lifetimes: access tokens expire in {self.ACCESS_TOKEN_EXPIRE_MINUTES}m, "
+            f"refresh tokens expire in {self.REFRESH_TOKEN_EXPIRE_DAYS}d "
+            f"(grace window: {self.REFRESH_GRACE_WINDOW_SECONDS}s).\n"
+            f"- Rate limits: login ({self.LOGIN_RATE_LIMIT_TIMES} req/"
+            f"{self.LOGIN_RATE_LIMIT_SECONDS}s), "
+            f"register ({self.REGISTER_RATE_LIMIT_TIMES} req/"
+            f"{self.REGISTER_RATE_LIMIT_SECONDS}s), "
+            f"refresh ({self.REFRESH_RATE_LIMIT_TIMES} req/"
+            f"{self.REFRESH_RATE_LIMIT_SECONDS}s), "
+            f"logout ({self.LOGOUT_RATE_LIMIT_TIMES} req/"
+            f"{self.LOGOUT_RATE_LIMIT_SECONDS}s).\n"
+            f"- Account lockout: {self.MAX_LOGIN_ATTEMPTS} failed attempts per email "
+            f"in {self.LOGIN_LOCKOUT_SECONDS}s fixed window.\n"
             "- Rate limiting is enforced using fixed windows with standard 429 status "
             "and `Retry-After` headers.\n"
             "- Degraded downstream dependencies trigger 503 Service Unavailable "
