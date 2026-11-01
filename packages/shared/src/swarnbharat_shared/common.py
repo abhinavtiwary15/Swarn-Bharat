@@ -27,6 +27,11 @@ class ErrorCode(StrEnum):
     TOKEN_EXPIRED = "TOKEN_EXPIRED"  # noqa: S105
     TOKEN_INVALID = "TOKEN_INVALID"  # noqa: S105
     HTTP_ERROR = "HTTP_ERROR"
+    EMAIL_TAKEN = "EMAIL_TAKEN"
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    ACCOUNT_LOCKED = "ACCOUNT_LOCKED"
+    SESSION_REVOKED = "SESSION_REVOKED"
+    TOKEN_REUSE_DETECTED = "TOKEN_REUSE_DETECTED"  # noqa: S105
 
 
 class ErrorDetail(BaseModel):
@@ -62,3 +67,13 @@ class HealthStatus(BaseModel):
 
 class HealthEnvelope(SuccessEnvelope[HealthStatus]):
     """Typed envelope for health check responses."""
+
+
+class LogoutStatus(BaseModel):
+    """Status payload for logout responses."""
+
+    status: Literal["ok"] = "ok"
+
+
+class LogoutEnvelope(SuccessEnvelope[LogoutStatus]):
+    """Typed envelope for logout responses."""

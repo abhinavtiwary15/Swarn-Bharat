@@ -1,12 +1,15 @@
 """Shared data contracts and Pydantic schemas."""
 
 from swarnbharat_shared.auth import (
-    GoogleTokenRequest,
     LoginRequest,
+    LogoutEnvelope,
     LogoutRequest,
+    LogoutStatus,
     RefreshRequest,
     RegisterRequest,
+    TokenEnvelope,
     TokenPair,
+    UserEnvelope,
     UserPublic,
 )
 from swarnbharat_shared.common import (
@@ -22,14 +25,17 @@ __all__ = [
     "ErrorCode",
     "ErrorDetail",
     "ErrorResponse",
-    "GoogleTokenRequest",
     "HealthEnvelope",
     "HealthStatus",
     "LoginRequest",
+    "LogoutEnvelope",
     "LogoutRequest",
+    "LogoutStatus",
     "RefreshRequest",
     "RegisterRequest",
     "SuccessEnvelope",
+    "TokenEnvelope",
     "TokenPair",
+    "UserEnvelope",
     "UserPublic",
 ]
