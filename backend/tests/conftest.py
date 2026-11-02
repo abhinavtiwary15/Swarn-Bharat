@@ -200,3 +200,108 @@ async def client(
         base_url="http://localhost",
     ) as c:
         yield c
+
+
+@pytest.fixture
+def app_settings():
+    """Provide settings instance for test configuration overrides."""
+    return settings
+
+
+@pytest.fixture
+def make_client(managed_app: FastAPI):
+    """Factory to create httpx.AsyncClient with a specific client IP for rate-limit / lockout tests."""
+
+    def _builder(client_ip: str = "127.0.0.1") -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=managed_app, client=(client_ip, 12345)),
+            base_url="http://localhost",
+        )
+
+    return _builder
+
+
+@pytest.fixture
+def redis_tokens_client():
+    """Provide direct access to test Redis DB 12 (tokens)."""
+    from backend.core.redis import redis_tokens
+
+    return redis_tokens
+
+
+@pytest.fixture
+def redis_rl_client():
+    """Provide direct access to test Redis DB 13 (rate limiter)."""
+    from backend.core.redis import redis_rl
+
+    return redis_rl
+
+
+@pytest.fixture
+def redis_throttle_client():
+    """Provide direct access to test Redis DB 14 (login throttle)."""
+    from backend.core.redis import redis_throttle
+
+    return redis_throttle
+
+
+@pytest.fixture
+def make_access_token():
+    """Factory fixture to mint JWT access tokens for black-box testing (docs/specs/auth-b2.md §3 & §10)."""
+    import time
+    from typing import Any
+    from uuid import uuid4
+
+    import jwt
+
+    def _maker(
+        sub: str | None = None,
+        exp_delta: int = 900,
+        token_type: str = "access",
+        key: str = settings.JWT_SECRET_KEY,
+        extra_claims: dict[str, Any] | None = None,
+    ) -> str:
+        now = int(time.time())
+        claims: dict[str, Any] = {
+            "sub": str(uuid4()) if sub is None else sub,
+            "type": token_type,
+            "iat": now,
+            "exp": now + exp_delta,
+        }
+        if extra_claims:
+            claims.update(extra_claims)
+        return jwt.encode(claims, key, algorithm="HS256")
+
+    return _maker
+
+
+@pytest.fixture
+def make_refresh_token():
+    """Factory fixture to mint JWT refresh tokens for black-box testing (docs/specs/auth-b2.md §3 & §10)."""
+    import time
+    from typing import Any
+    from uuid import uuid4
+
+    import jwt
+
+    def _maker(
+        sub: str | None = None,
+        jti: str | None = None,
+        exp_delta: int = 604800,
+        token_type: str = "refresh",
+        key: str = settings.JWT_REFRESH_SECRET_KEY,
+        extra_claims: dict[str, Any] | None = None,
+    ) -> str:
+        now = int(time.time())
+        claims: dict[str, Any] = {
+            "sub": str(uuid4()) if sub is None else sub,
+            "type": token_type,
+            "jti": str(uuid4()) if jti is None else jti,
+            "iat": now,
+            "exp": now + exp_delta,
+        }
+        if extra_claims:
+            claims.update(extra_claims)
+        return jwt.encode(claims, key, algorithm="HS256")
+
+    return _maker
