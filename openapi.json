@@ -376,7 +376,7 @@
     }
   },
   "info": {
-    "description": "REST API for Swarn Bharat API.\n\n### API conventions\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Token lifetimes: access tokens expire in 15m, refresh tokens expire in 7d (grace window: 30s).\n- Rate limits: login (5 req/60s), register (5 req/60s), refresh (30 req/60s), logout (30 req/60s).\n- Account lockout: 10 failed attempts per email in 900s fixed window.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
+    "description": "REST API for the Swarn Bharat platform.\n\n### API conventions\n- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success and `ErrorResponse` on failure.\n- Token lifetimes: access tokens expire in 15m, refresh tokens expire in 7d (grace window: 30s).\n- Rate limits: login (5 req/60s), register (5 req/60s), refresh (30 req/60s), logout (30 req/60s).\n- Account lockout: 10 failed attempts per email in 900s fixed window.\n- Rate limiting is enforced using fixed windows with standard 429 status and `Retry-After` headers.\n- Degraded downstream dependencies trigger 503 Service Unavailable with `Retry-After` headers.",
     "title": "Swarn Bharat API",
     "version": "1.0.0"
   },
@@ -405,7 +405,21 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful login with access and refresh tokens",
+            "headers": {
+              "Cache-Control": {
+                "description": "Disables response caching (no-store)",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Pragma": {
+                "description": "Disables response caching (no-cache)",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -581,7 +595,15 @@
                 }
               }
             },
-            "description": "Unauthorized, token expired, or token invalid"
+            "description": "Unauthorized, token expired, or token invalid",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "503": {
             "content": {
@@ -636,7 +658,21 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful refresh rotation returning new token pair",
+            "headers": {
+              "Cache-Control": {
+                "description": "Disables response caching (no-store)",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Pragma": {
+                "description": "Disables response caching (no-cache)",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {

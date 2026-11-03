@@ -98,7 +98,7 @@ class Settings(BaseSettings):
     def openapi_description(self) -> str:
         """Build the OpenAPI contract description from active configuration."""
         return (
-            f"REST API for {self.API_TITLE}.\n\n"
+            "REST API for the Swarn Bharat platform.\n\n"
             "### API conventions\n"
             "- All responses adhere to standard envelopes: `SuccessEnvelope[T]` on success "
             "and `ErrorResponse` on failure.\n"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,7 @@ from backend.core.redis import redis_throttle, redis_tokens
 from backend.core.security import create_access_token
 from backend.models.user import User
 from backend.services import auth_service
+from backend.services.token_service import TokenReuseError
 from swarnbharat_shared.auth import RegisterRequest
 from swarnbharat_shared.common import ErrorCode
 
@@ -63,6 +65,25 @@ async def test_register_duplicate_email_raises_email_taken(db_session: AsyncSess
         await auth_service.register(db_session, req_dup)
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == ErrorCode.EMAIL_TAKEN
+    assert exc_info.value.field == "email"
+
+
+@pytest.mark.asyncio
+async def test_register_check_violation_raises_validation_error(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Bypass application-level lowercasing to test database CHECK constraint handling
+    monkeypatch.setattr(auth_service, "normalize_email", lambda e: e)
+    req = RegisterRequest(
+        email="MixedCase@example.com",
+        password="securePassword123",
+        full_name="Mixed Case User",
+    )
+    with pytest.raises(ApiError) as exc_info:
+        await auth_service.register(db_session, req)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.code == ErrorCode.VALIDATION_ERROR
     assert exc_info.value.field == "email"
 
 
@@ -140,6 +161,36 @@ async def test_login_lockout_after_max_attempts(db_session: AsyncSession) -> Non
 
 
 @pytest.mark.asyncio
+async def test_login_parallel_failed_attempts_bounds_concurrency(
+    db_session: AsyncSession,
+) -> None:
+    from backend.core.database import _SessionLocal
+
+    req = RegisterRequest(
+        email="parallel@example.com",
+        password="correctPassword123",
+        full_name="Parallel User",
+    )
+    await auth_service.register(db_session, req)
+
+    async def _attempt() -> int:
+        async with _SessionLocal() as session:
+            try:
+                await auth_service.login(
+                    session,
+                    "parallel@example.com",
+                    "wrongPassword",
+                )
+                return 200
+            except ApiError as exc:
+                return exc.status_code
+
+    results = await asyncio.gather(*[_attempt() for _ in range(20)])
+    assert results.count(401) == settings.MAX_LOGIN_ATTEMPTS
+    assert results.count(429) == 20 - settings.MAX_LOGIN_ATTEMPTS
+
+
+@pytest.mark.asyncio
 async def test_login_unknown_email_locks_out_identically(db_session: AsyncSession) -> None:
     unknown = "unknown@example.com"
     for _ in range(10):
@@ -184,6 +235,33 @@ async def test_refresh_token_lifecycle(db_session: AsyncSession) -> None:
     # Replay within grace window succeeds and returns identical successor token
     grace_tokens = await auth_service.refresh(db_session, tokens.refresh_token)
     assert grace_tokens.refresh_token == new_tokens.refresh_token
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_reuse_detected_raises_error(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    req = RegisterRequest(
+        email="reuse@example.com",
+        password="correctPassword123",
+        full_name="Reuse User",
+    )
+    await auth_service.register(db_session, req)
+    tokens = await auth_service.login(
+        db_session,
+        "reuse@example.com",
+        "correctPassword123",
+    )
+
+    async def _mock_rotate(*args: Any, **kwargs: Any) -> Any:
+        raise TokenReuseError("reuse detected")
+
+    monkeypatch.setattr(auth_service, "rotate_token", _mock_rotate)
+    with pytest.raises(ApiError) as exc_info:
+        await auth_service.refresh(db_session, tokens.refresh_token)
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.code == ErrorCode.TOKEN_REUSE_DETECTED
 
 
 @pytest.mark.asyncio

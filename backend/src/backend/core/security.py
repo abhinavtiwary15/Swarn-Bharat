@@ -72,7 +72,7 @@ def create_refresh_token(
 ) -> tuple[str, str]:
     """Create a signed JWT refresh token and return (token, jti).
 
-    Note: Redis state is authoritative for validity; the JWT exp claim is advisory.
+    Redis state is authoritative for validity; the JWT exp claim is advisory.
     """
     sub = str(subject)
     token_jti = jti or str(uuid4())

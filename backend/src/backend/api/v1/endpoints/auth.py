@@ -26,7 +26,7 @@ from swarnbharat_shared.common import ErrorResponse
 
 router = APIRouter()
 
-_RATE_LIMIT_503_RESPONSES: dict[int | str, dict[str, Any]] = {
+_AUTH_COMMON_RESPONSES: dict[int | str, dict[str, Any]] = {
     status.HTTP_429_TOO_MANY_REQUESTS: {
         "model": ErrorResponse,
         "description": "Rate limit exceeded or account locked",
@@ -74,7 +74,7 @@ _RATE_LIMIT_503_RESPONSES: dict[int | str, dict[str, Any]] = {
             "model": ErrorResponse,
             "description": "Validation error (VALIDATION_ERROR)",
         },
-        **_RATE_LIMIT_503_RESPONSES,
+        **_AUTH_COMMON_RESPONSES,
     },
     summary="Register user account",
 )
@@ -100,6 +100,20 @@ async def register(
         )
     ],
     responses={
+        status.HTTP_200_OK: {
+            "model": TokenEnvelope,
+            "description": "Successful login with access and refresh tokens",
+            "headers": {
+                "Cache-Control": {
+                    "schema": {"type": "string"},
+                    "description": "Disables response caching (no-store)",
+                },
+                "Pragma": {
+                    "schema": {"type": "string"},
+                    "description": "Disables response caching (no-cache)",
+                },
+            },
+        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Invalid credentials (INVALID_CREDENTIALS)",
@@ -108,7 +122,7 @@ async def register(
             "model": ErrorResponse,
             "description": "Validation error (VALIDATION_ERROR)",
         },
-        **_RATE_LIMIT_503_RESPONSES,
+        **_AUTH_COMMON_RESPONSES,
     },
     summary="Log in user",
 )
@@ -137,6 +151,20 @@ async def login(
         )
     ],
     responses={
+        status.HTTP_200_OK: {
+            "model": TokenEnvelope,
+            "description": "Successful refresh rotation returning new token pair",
+            "headers": {
+                "Cache-Control": {
+                    "schema": {"type": "string"},
+                    "description": "Disables response caching (no-store)",
+                },
+                "Pragma": {
+                    "schema": {"type": "string"},
+                    "description": "Disables response caching (no-cache)",
+                },
+            },
+        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Token expired, invalid, session revoked, or reuse detected",
@@ -145,7 +173,7 @@ async def login(
             "model": ErrorResponse,
             "description": "Validation error (VALIDATION_ERROR)",
         },
-        **_RATE_LIMIT_503_RESPONSES,
+        **_AUTH_COMMON_RESPONSES,
     },
     summary="Refresh access and refresh tokens",
 )
@@ -182,7 +210,7 @@ async def refresh(
             "model": ErrorResponse,
             "description": "Validation error (VALIDATION_ERROR)",
         },
-        **_RATE_LIMIT_503_RESPONSES,
+        **_AUTH_COMMON_RESPONSES,
     },
     summary="Log out user",
 )
@@ -202,6 +230,12 @@ async def logout(
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Unauthorized, token expired, or token invalid",
+            "headers": {
+                "WWW-Authenticate": {
+                    "schema": {"type": "string"},
+                    "description": "Bearer authentication challenge",
+                },
+            },
         },
         status.HTTP_503_SERVICE_UNAVAILABLE: {
             "model": ErrorResponse,
@@ -220,4 +254,4 @@ async def me(
     user: User = Depends(get_current_user),
 ) -> UserEnvelope:
     """Return the profile for the currently authenticated Bearer token user."""
-    return UserEnvelope(data=auth_service._to_user_public(user))
+    return UserEnvelope(data=auth_service.to_user_public(user))

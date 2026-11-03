@@ -33,11 +33,12 @@ Argon2id is deliberately computationally expensive. Without pre-verification thr
 - **Account Lockout on Non-Existent Users**: The failure counter increments and locks out unknown emails identically to registered emails, preventing attackers from discerning account existence via lockout behavior.
 
 ### 5. Email Enumeration Trade-Offs
-- **Registration**: Registration returns `409 EMAIL_TAKEN` (`field="email"`) when an email already exists. This conscious UX trade-off provides immediate feedback during user sign-up rather than requiring opaque asynchronous email confirmation loops (deferred to Stage B3+).
+- **Registration**: Registration returns `409 EMAIL_TAKEN` (`field="email"`) when an email already exists. This conscious UX trade-off provides immediate feedback during user sign-up rather than requiring opaque asynchronous email confirmation loops.
 - **Login**: Login strictly maintains anti-enumeration: responses for invalid passwords, unknown emails, and unverified accounts return an indistinguishable `401 INVALID_CREDENTIALS`.
 
-## Design choices to confirm
+## Consequences
 
-1. **Email Uniqueness Discrimination**: Immediate `409 EMAIL_TAKEN` during registration is chosen over silent absorption for user onboarding clarity.
-2. **Pre-Rotation User Existence Check**: `/refresh` verifies user existence in Postgres before rotating tokens in Redis. If the user was deleted, all user sessions are immediately revoked and `401 UNAUTHORIZED` is returned.
-3. **Idempotent Expired Logout**: Logging out with an expired refresh token succeeds with `200 OK` (`{"status": "ok"}`), ensuring idempotent cleanup without revealing token expiration details.
+- **Email Uniqueness Discrimination**: Immediate `409 EMAIL_TAKEN` during registration is chosen over silent absorption for user onboarding clarity.
+- **Pre-Rotation User Existence Check**: `/refresh` verifies user existence in Postgres before rotating tokens in Redis. If the user was deleted, all user sessions are immediately revoked and `401 UNAUTHORIZED` is returned.
+- **Idempotent Expired Logout**: Logging out with an expired refresh token succeeds with `200 OK` (`{"status": "ok"}`), ensuring idempotent cleanup without revealing token expiration details.
+- **Redis Dependency**: The service relies on Redis >= 7.0 for atomic `EXPIRE ... NX` fixed-window enforcement.

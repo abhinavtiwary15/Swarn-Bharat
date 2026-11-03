@@ -47,7 +47,8 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
-def _to_user_public(user: User) -> UserPublic:
+def to_user_public(user: User) -> UserPublic:
+    """Map a User ORM instance to a UserPublic schema."""
     return UserPublic(
         id=user.id,
         email=user.email,
@@ -56,6 +57,49 @@ def _to_user_public(user: User) -> UserPublic:
         oauth_provider=user.oauth_provider,
         created_at=user.created_at,
     )
+
+
+def parse_refresh_token(
+    refresh_token_str: str,
+    allow_expired: bool = False,
+) -> tuple[uuid.UUID, str] | None:
+    """Decode and validate a refresh token, returning (user_id, jti) or None if expired."""
+    try:
+        payload = decode_refresh_token(refresh_token_str)
+    except jwt.ExpiredSignatureError as exc:
+        if allow_expired:
+            return None
+        raise ApiError(
+            status_code=401,
+            code=ErrorCode.TOKEN_EXPIRED,
+            message="Refresh token has expired",
+        ) from exc
+    except jwt.InvalidTokenError as exc:
+        raise ApiError(
+            status_code=401,
+            code=ErrorCode.TOKEN_INVALID,
+            message="Invalid refresh token",
+        ) from exc
+
+    sub = payload.get("sub", "")
+    try:
+        user_id = uuid.UUID(sub)
+    except (ValueError, TypeError) as exc:
+        raise ApiError(
+            status_code=401,
+            code=ErrorCode.TOKEN_INVALID,
+            message="Invalid token subject",
+        ) from exc
+
+    jti = payload.get("jti")
+    if not jti:
+        raise ApiError(
+            status_code=401,
+            code=ErrorCode.TOKEN_INVALID,
+            message="Missing token identifier",
+        )
+
+    return user_id, str(jti)
 
 
 async def register(db: AsyncSession, payload: RegisterRequest) -> UserPublic:
@@ -95,7 +139,7 @@ async def register(db: AsyncSession, payload: RegisterRequest) -> UserPublic:
         raise
 
     await db.refresh(user)
-    return _to_user_public(user)
+    return to_user_public(user)
 
 
 async def login(
@@ -165,38 +209,14 @@ async def refresh(
     refresh_token_str: str,
 ) -> TokenPair:
     """Rotate a refresh token, issuing a new token pair."""
-    try:
-        payload = decode_refresh_token(refresh_token_str)
-    except jwt.ExpiredSignatureError as exc:
+    parsed = parse_refresh_token(refresh_token_str, allow_expired=False)
+    if parsed is None:
         raise ApiError(
             status_code=401,
             code=ErrorCode.TOKEN_EXPIRED,
             message="Refresh token has expired",
-        ) from exc
-    except jwt.InvalidTokenError as exc:
-        raise ApiError(
-            status_code=401,
-            code=ErrorCode.TOKEN_INVALID,
-            message="Invalid refresh token",
-        ) from exc
-
-    sub = payload.get("sub", "")
-    try:
-        user_id = uuid.UUID(sub)
-    except (ValueError, TypeError) as exc:
-        raise ApiError(
-            status_code=401,
-            code=ErrorCode.TOKEN_INVALID,
-            message="Invalid token subject",
-        ) from exc
-
-    jti = payload.get("jti")
-    if not jti:
-        raise ApiError(
-            status_code=401,
-            code=ErrorCode.TOKEN_INVALID,
-            message="Missing token identifier",
         )
+    user_id, jti = parsed
 
     user = await db.get(User, user_id)
     if user is None:
@@ -237,34 +257,10 @@ async def logout(
     refresh_token_str: str,
 ) -> LogoutStatus:
     """Revoke a single refresh token session idempotently."""
-    try:
-        payload = decode_refresh_token(refresh_token_str)
-    except jwt.ExpiredSignatureError:
+    parsed = parse_refresh_token(refresh_token_str, allow_expired=True)
+    if parsed is None:
         return LogoutStatus(status="ok")
-    except jwt.InvalidTokenError as exc:
-        raise ApiError(
-            status_code=401,
-            code=ErrorCode.TOKEN_INVALID,
-            message="Invalid refresh token",
-        ) from exc
-
-    sub = payload.get("sub", "")
-    try:
-        user_id = uuid.UUID(sub)
-    except (ValueError, TypeError) as exc:
-        raise ApiError(
-            status_code=401,
-            code=ErrorCode.TOKEN_INVALID,
-            message="Invalid token subject",
-        ) from exc
-
-    jti = payload.get("jti")
-    if not jti:
-        raise ApiError(
-            status_code=401,
-            code=ErrorCode.TOKEN_INVALID,
-            message="Missing token identifier",
-        )
+    user_id, jti = parsed
 
     await revoke_token(user_id, jti)
     return LogoutStatus(status="ok")
