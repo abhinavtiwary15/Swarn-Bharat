@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 import httpx
 import pytest
@@ -203,13 +204,13 @@ async def client(
 
 
 @pytest.fixture
-def app_settings():
+def app_settings() -> Any:
     """Provide settings instance for test configuration overrides."""
     return settings
 
 
 @pytest.fixture
-def make_client(managed_app: FastAPI):
+def make_client(managed_app: FastAPI) -> Callable[[str], httpx.AsyncClient]:
     """Factory to create httpx.AsyncClient with a specific client IP for rate-limit / lockout tests."""
 
     def _builder(client_ip: str = "127.0.0.1") -> httpx.AsyncClient:
@@ -222,7 +223,7 @@ def make_client(managed_app: FastAPI):
 
 
 @pytest.fixture
-def redis_tokens_client():
+def redis_tokens_client() -> Any:
     """Provide direct access to test Redis DB 12 (tokens)."""
     from backend.core.redis import redis_tokens
 
@@ -230,7 +231,7 @@ def redis_tokens_client():
 
 
 @pytest.fixture
-def redis_rl_client():
+def redis_rl_client() -> Any:
     """Provide direct access to test Redis DB 13 (rate limiter)."""
     from backend.core.redis import redis_rl
 
@@ -238,7 +239,7 @@ def redis_rl_client():
 
 
 @pytest.fixture
-def redis_throttle_client():
+def redis_throttle_client() -> Any:
     """Provide direct access to test Redis DB 14 (login throttle)."""
     from backend.core.redis import redis_throttle
 
@@ -246,10 +247,9 @@ def redis_throttle_client():
 
 
 @pytest.fixture
-def make_access_token():
+def make_access_token() -> Callable[..., str]:
     """Factory fixture to mint JWT access tokens for black-box testing (docs/specs/auth-b2.md §3 & §10)."""
     import time
-    from typing import Any
     from uuid import uuid4
 
     import jwt
@@ -276,10 +276,9 @@ def make_access_token():
 
 
 @pytest.fixture
-def make_refresh_token():
+def make_refresh_token() -> Callable[..., str]:
     """Factory fixture to mint JWT refresh tokens for black-box testing (docs/specs/auth-b2.md §3 & §10)."""
     import time
-    from typing import Any
     from uuid import uuid4
 
     import jwt
